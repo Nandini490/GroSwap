@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1080808426200",
+    "project_id": "groswap-70246",
+    "storage_bucket": "groswap-70246.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1080808426200:android:784db7b354df4f180ca5ad",
+        "android_client_info": {
+          "package_name": "com.example.groswap"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCjX3YgSV96SnMO_DJBsm15SYh25No1H_k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
