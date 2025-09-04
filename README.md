@@ -1,9 +1,13 @@
-# groswap
+# GroSwap
 
-A new Flutter project.
+A Flutter-based app with Firebase authentication.
+
+## Features
+- Email & password login/signup using Firebase
+- Cross-platform (Android, iOS, Web, Windows, macOS)
+- Simple, modern UI
 
 ## Getting Started
-
 This project is a starting point for a Flutter application.
 
 A few resources to get you started if this is your first Flutter project:
