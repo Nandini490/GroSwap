@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'selection.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,8 +17,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'GroSwap',
-      theme: ThemeData(primarySwatch: Colors.green),
+      title: 'Resourcely',
+      theme: ThemeData(primarySwatch: Colors.teal),
       home: const AuthGate(),
     );
   }
@@ -32,7 +33,7 @@ class AuthGate extends StatelessWidget {
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.hasData) {
-          return const HomeScreen();
+          return const SelectionPage(); // <-- Change here
         }
         return const LoginScreen();
       },
@@ -54,8 +55,8 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _login() async {
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text,
-        password: _passwordController.text,
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
       );
     } catch (e) {
       ScaffoldMessenger.of(
@@ -67,8 +68,8 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _signup() async {
     try {
       await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: _emailController.text,
-        password: _passwordController.text,
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
       );
     } catch (e) {
       ScaffoldMessenger.of(
@@ -80,7 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.green.shade50,
+      backgroundColor: Colors.teal.shade50,
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(32),
@@ -88,16 +89,16 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // App Logo
-              Image.asset("assets/images/logo2_transparent.png", height: 120),
+              Image.asset("assets/images/resourcely_logo.png", height: 120),
               const SizedBox(height: 20),
 
               // Title
               const Text(
-                "GroSwap",
+                "Resourcely",
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
-                  color: Colors.green,
+                  color: Colors.teal,
                 ),
               ),
               const SizedBox(height: 40),
@@ -134,7 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ElevatedButton(
                     onPressed: _login,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
+                      backgroundColor: Colors.teal,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -148,7 +149,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   OutlinedButton(
                     onPressed: _signup,
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Colors.green),
+                      side: const BorderSide(color: Colors.teal),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -169,22 +170,3 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("GroSwap"),
-        actions: [
-          IconButton(
-            onPressed: () => FirebaseAuth.instance.signOut(),
-            icon: const Icon(Icons.logout),
-          ),
-        ],
-      ),
-      body: const Center(child: Text("Welcome to GroSwap 🎉")),
-    );
-  }
-}
