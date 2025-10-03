@@ -15,10 +15,11 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
+
   File? _profileImage;
   bool _loading = false;
 
@@ -38,6 +39,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
+  // ------------------ Load profile from Firestore ------------------
   Future<void> _loadProfile() async {
     if (user == null) return;
     setState(() => _loading = true);
@@ -60,13 +62,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _loading = false);
   }
 
+  // ------------------ Pick profile image ------------------
   Future<void> _pickImage() async {
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 500,
+      maxHeight: 500,
+    );
     if (picked != null) {
       setState(() => _profileImage = File(picked.path));
     }
   }
 
+  // ------------------ Auto-detect location ------------------
   Future<void> _getCurrentLocation() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
@@ -95,6 +103,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  // ------------------ Pick location on map ------------------
   void _pickOnMap() {
     Navigator.push(
       context,
@@ -102,7 +111,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         builder: (context) => MapPickerScreen(
           onLocationPicked: (latLng) {
             setState(() {
-              _addressController.text = "${latLng.latitude}, ${latLng.longitude}";
+              _addressController.text =
+                  "${latLng.latitude}, ${latLng.longitude}";
             });
           },
         ),
@@ -110,9 +120,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // ------------------ Save profile to Firestore ------------------
   Future<void> _saveProfile() async {
     if (user == null) return;
     if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _loading = true);
 
     try {
       final profileData = {
@@ -124,7 +137,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
-      await FirebaseFirestore.instance.collection('users').doc(user!.uid).set(profileData);
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user!.uid)
+          .set(profileData, SetOptions(merge: true));
 
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text("Profile saved successfully!")));
@@ -132,6 +148,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text("Error saving profile: $e")));
     }
+
+    setState(() => _loading = false);
+  }
+
+  // ------------------ Logout ------------------
+  Future<void> _logout() async {
+    await FirebaseAuth.instance.signOut();
+    Navigator.pushReplacementNamed(context, '/login'); 
+    // Replace '/login' with your actual login route
   }
 
   @override
@@ -172,7 +197,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    // Name
+                    // Full Name
                     TextFormField(
                       controller: _nameController,
                       decoration: const InputDecoration(
@@ -186,7 +211,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    // Phone
+                    // Phone Number
                     TextFormField(
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
@@ -220,33 +245,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         Expanded(
                           child: ElevatedButton.icon(
-                            style:
-                                ElevatedButton.styleFrom(backgroundColor: Colors.teal),
                             onPressed: _getCurrentLocation,
                             icon: const Icon(Icons.my_location),
                             label: const Text("Auto Location"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.teal,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: ElevatedButton.icon(
-                            style:
-                                ElevatedButton.styleFrom(backgroundColor: Colors.teal),
                             onPressed: _pickOnMap,
                             icon: const Icon(Icons.map),
                             label: const Text("Pick on Map"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.teal,
+                            ),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 20),
 
+                    // Save button
                     ElevatedButton(
                       onPressed: _saveProfile,
                       style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.teal,
-                          padding: const EdgeInsets.symmetric(vertical: 14)),
+                        backgroundColor: Colors.teal,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
                       child: const Text("Save Profile"),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Logout button
+                    ElevatedButton.icon(
+                      onPressed: _logout,
+                      icon: const Icon(Icons.logout),
+                      label: const Text("Logout"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
                     ),
                   ],
                 ),
@@ -272,10 +314,11 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Pick Location"), backgroundColor: Colors.black),
+      appBar:
+          AppBar(title: const Text("Pick Location"), backgroundColor: Colors.black),
       body: GoogleMap(
         initialCameraPosition: const CameraPosition(
-          target: LatLng(20.5937, 78.9629), // Default center (India)
+          target: LatLng(20.5937, 78.9629),
           zoom: 4,
         ),
         onTap: (latLng) => setState(() => _pickedLocation = latLng),
