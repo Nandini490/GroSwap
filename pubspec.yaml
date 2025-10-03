@@ -17,11 +17,19 @@ dependencies:
   cloud_firestore: ^6.0.1
   firebase_storage: ^13.0.1
 
-  # Optional for state management
+  # State management
   provider: ^6.0.5
 
-  # iOS-style icons
+  # Icons
   cupertino_icons: ^1.0.8
+
+  # Image picker for selecting images
+  image_picker: ^0.8.7+5
+
+  # Location and Maps
+  geolocator: ^10.0.0
+  geocoding: ^2.0.5
+  google_maps_flutter: ^2.3.0
 
 dev_dependencies:
   flutter_test:
@@ -31,6 +39,6 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # Assets
+  # Assets (all images inside this folder will be available)
   assets:
-    - assets/images/logo2_transparent.png
+    - assets/images/
