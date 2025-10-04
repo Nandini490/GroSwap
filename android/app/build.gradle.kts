@@ -26,7 +26,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.groswap"
-        minSdk = flutter.minSdkVersion
+        minSdk = 23              // <-- Updated minSdkVersion for Firestore
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
