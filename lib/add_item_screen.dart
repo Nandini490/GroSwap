@@ -30,15 +30,16 @@ class _AddItemScreenState extends State<AddItemScreen> {
   File? _selectedImage;
   bool _isLoading = false;
 
-  // 🧠 Pick Image
+  // Pick image
   Future<void> _pickImage() async {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (picked != null) {
-      setState(() => _selectedImage = File(picked.path));
-    }
+    if (picked != null) setState(() => _selectedImage = File(picked.path));
   }
 
-  // 🧠 Pick Expiry Date (for groceries)
+  // Remove image
+  void _removeImage() => setState(() => _selectedImage = null);
+
+  // Pick expiry date
   Future<void> _pickExpiryDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -46,22 +47,18 @@ class _AddItemScreenState extends State<AddItemScreen> {
       firstDate: DateTime.now(),
       lastDate: DateTime(2100),
     );
-    if (picked != null) {
-      setState(() => _selectedExpiryDate = picked);
-    }
+    if (picked != null) setState(() => _selectedExpiryDate = picked);
   }
 
-  // 🧠 Save Item to Firestore
+  // Save item
   Future<void> _saveItem() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-
     try {
       final user = FirebaseAuth.instance.currentUser!;
       String? imageUrl;
 
-      // Upload image to Firebase Storage
       if (_selectedImage != null) {
         final ref = FirebaseStorage.instance
             .ref()
@@ -70,7 +67,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
         imageUrl = await ref.getDownloadURL();
       }
 
-      // Save to Firestore
       await FirebaseFirestore.instance.collection('items').add({
         'userId': user.uid,
         'userEmail': user.email,
@@ -121,10 +117,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Add Item"),
-        backgroundColor: Colors.teal,
-      ),
+      appBar: AppBar(title: const Text('Add Item'), backgroundColor: Colors.teal),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -133,30 +126,45 @@ class _AddItemScreenState extends State<AddItemScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 🖼️ Image Picker
-                GestureDetector(
-                  onTap: _pickImage,
-                  child: _selectedImage == null
-                      ? Container(
-                          height: 160,
-                          width: double.infinity,
-                          color: Colors.teal.withOpacity(0.15),
-                          child: const Center(
-                            child: Icon(Icons.add_a_photo,
-                                size: 50, color: Colors.teal),
-                          ),
-                        )
-                      : ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.file(_selectedImage!,
+                // Image Picker
+                Stack(
+                  children: [
+                    GestureDetector(
+                      onTap: _pickImage,
+                      child: _selectedImage == null
+                          ? Container(
                               height: 160,
                               width: double.infinity,
-                              fit: BoxFit.cover),
+                              color: Colors.teal.withOpacity(0.15),
+                              child: const Center(
+                                  child: Icon(Icons.add_a_photo,
+                                      size: 50, color: Colors.teal)),
+                            )
+                          : ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.file(_selectedImage!,
+                                  height: 160,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover),
+                            ),
+                    ),
+                    if (_selectedImage != null)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: InkWell(
+                          onTap: _removeImage,
+                          child: const CircleAvatar(
+                            backgroundColor: Colors.red,
+                            child: Icon(Icons.close, color: Colors.white),
+                          ),
                         ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 16),
 
-                // 🏷️ Name
+                // Name & Price
                 TextFormField(
                   controller: _nameController,
                   decoration: const InputDecoration(
@@ -164,12 +172,9 @@ class _AddItemScreenState extends State<AddItemScreen> {
                     prefixIcon: Icon(Icons.label),
                     border: OutlineInputBorder(),
                   ),
-                  validator: (v) =>
-                      v == null || v.isEmpty ? 'Enter item name' : null,
+                  validator: (v) => v == null || v.isEmpty ? 'Enter item name' : null,
                 ),
                 const SizedBox(height: 12),
-
-                // 💰 Price
                 TextFormField(
                   controller: _priceController,
                   decoration: const InputDecoration(
@@ -178,12 +183,11 @@ class _AddItemScreenState extends State<AddItemScreen> {
                     border: OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.number,
-                  validator: (v) =>
-                      v == null || v.isEmpty ? 'Enter item price' : null,
+                  validator: (v) => v == null || v.isEmpty ? 'Enter price' : null,
                 ),
                 const SizedBox(height: 12),
 
-                // 🗂️ Category
+                // Category, Condition, Purpose
                 DropdownButtonFormField<String>(
                   value: selectedCategory,
                   decoration: const InputDecoration(
@@ -201,16 +205,14 @@ class _AddItemScreenState extends State<AddItemScreen> {
                   ]
                       .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                       .toList(),
-                  onChanged: (value) {
+                  onChanged: (v) {
                     setState(() {
-                      selectedCategory = value!;
+                      selectedCategory = v!;
                       _selectedExpiryDate = null;
                     });
                   },
                 ),
                 const SizedBox(height: 12),
-
-                // ⚙️ Condition
                 DropdownButtonFormField<String>(
                   value: selectedCondition,
                   decoration: const InputDecoration(
@@ -224,8 +226,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
                   onChanged: (v) => setState(() => selectedCondition = v!),
                 ),
                 const SizedBox(height: 12),
-
-                // 🔁 Purpose
                 DropdownButtonFormField<String>(
                   value: selectedPurpose,
                   decoration: const InputDecoration(
@@ -240,7 +240,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // 🔢 Quantity & Unit
+                // Quantity & Unit
                 Row(
                   children: [
                     Expanded(
@@ -258,7 +258,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                       child: TextFormField(
                         controller: _unitController,
                         decoration: const InputDecoration(
-                          labelText: "Unit (e.g. kg, pcs)",
+                          labelText: "Unit (kg, pcs...)",
                           border: OutlineInputBorder(),
                         ),
                       ),
@@ -267,18 +267,16 @@ class _AddItemScreenState extends State<AddItemScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // 📦 Location
+                // Location & Notes
                 TextFormField(
                   controller: _locationController,
                   decoration: const InputDecoration(
-                    labelText: "Storage Location (optional)",
+                    labelText: "Location (optional)",
                     prefixIcon: Icon(Icons.location_on_outlined),
                     border: OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 12),
-
-                // 📝 Notes
                 TextFormField(
                   controller: _notesController,
                   maxLines: 2,
@@ -290,7 +288,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // 📅 Expiry Date (only for groceries)
+                // Expiry date for groceries
                 if (selectedCategory == 'Grocery')
                   Center(
                     child: ElevatedButton.icon(
@@ -308,7 +306,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                   ),
                 const SizedBox(height: 20),
 
-                // 💾 Save
+                // Save button
                 Center(
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.teal)

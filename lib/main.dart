@@ -3,14 +3,20 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'login_screen.dart';
-import 'splash_screen.dart';
 import 'home_screen.dart';
+import 'splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // 🔧 Optional (only for testing): sign out automatically each time
+  // await FirebaseAuth.instance.signOut();
+
   runApp(const MyApp());
 }
 
@@ -23,7 +29,6 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Resourcely',
       theme: ThemeData.dark().copyWith(
-        primaryColor: const Color(0xFF00796B),
         scaffoldBackgroundColor: Colors.black,
         colorScheme: const ColorScheme.dark(
           primary: Color(0xFF00796B),
@@ -31,8 +36,16 @@ class MyApp extends StatelessWidget {
           background: Colors.black,
           surface: Color(0xFF121212),
         ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF00796B),
+          foregroundColor: Colors.white,
+        ),
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: Color(0xFF00796B),
+        ),
       ),
-      home: const SplashScreen(),
+      // ✅ Use AuthGate directly instead of SplashScreen (so it checks login)
+      home: const AuthGate(),
     );
   }
 }
@@ -46,7 +59,7 @@ class AuthGate extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // Show loader while checking auth
+        // Show loader while Firebase checks the user state
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(
@@ -55,12 +68,12 @@ class AuthGate extends StatelessWidget {
           );
         }
 
-        // User is logged in → HomeScreen
+        // ✅ If user is logged in → go to Home
         if (snapshot.hasData) {
           return const HomeScreen();
         }
 
-        // User is not logged in → LoginScreen
+        // 🚪 If user not logged in → go to Login
         return const LoginScreen();
       },
     );

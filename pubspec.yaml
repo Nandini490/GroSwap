@@ -11,34 +11,38 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Firebase
-  firebase_core: ^4.1.0
-  firebase_auth: ^6.0.2
-  cloud_firestore: ^6.0.1
-  firebase_storage: ^13.0.1
+  # ✅ Firebase (all compatible versions)
+  firebase_core: ^3.4.0
+  firebase_auth: ^5.3.0
+  cloud_firestore: ^5.4.0
+  firebase_storage: ^12.3.0
 
-  # State management
-  provider: ^6.0.5
+  # ✅ State management
+  provider: ^6.1.2
 
-  # Icons
+  # ✅ UI + Icons
   cupertino_icons: ^1.0.8
 
-  # Image picker for selecting images
-  image_picker: ^0.8.7+5
+  # ✅ Image picker for profile/item images
+  image_picker: ^1.1.2
 
-  # Location and Maps
-  geolocator: ^10.0.0
-  geocoding: ^2.0.5
-  google_maps_flutter: ^2.3.0
+  # ✅ Location & Maps (stable, mutually compatible)
+  geolocator: ^13.0.1
+  geocoding: ^3.0.0
+  google_maps_flutter: ^2.6.0
+  permission_handler: ^11.3.1
+
+  # ✅ Notifications (with timezone support)
+  flutter_local_notifications: ^17.2.3
+  timezone: 0.9.4
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^6.0.0
+  flutter_lints: ^5.0.0
 
 flutter:
   uses-material-design: true
 
-  # Assets (all images inside this folder will be available)
   assets:
     - assets/images/
