@@ -14,9 +14,6 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // 🔧 Optional (only for testing): sign out automatically each time
-  // await FirebaseAuth.instance.signOut();
-
   runApp(const MyApp());
 }
 
@@ -28,24 +25,43 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Resourcely',
-      theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: Colors.black,
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF00796B),
-          secondary: Color(0xFF121212),
-          background: Colors.black,
-          surface: Color(0xFF121212),
+      theme: ThemeData(
+        scaffoldBackgroundColor: const Color(0xFF507B7B),
+        primaryColor: const Color(0xFF507B7B),
+
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white,
+          hintStyle: const TextStyle(color: Colors.black54),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
         ),
+
+        textTheme: const TextTheme(
+          bodyMedium: TextStyle(color: Colors.black87),
+        ),
+
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF507B7B),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
+          ),
+        ),
+
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF00796B),
+          backgroundColor: Color(0xFF507B7B),
           foregroundColor: Colors.white,
         ),
-        floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: Color(0xFF00796B),
-        ),
       ),
-      // ✅ Use AuthGate directly instead of SplashScreen (so it checks login)
-      home: const AuthGate(),
+
+      // Show SplashScreen first
+      home: const SplashScreen(),
     );
   }
 }
@@ -59,21 +75,18 @@ class AuthGate extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // Show loader while Firebase checks the user state
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(
-              child: CircularProgressIndicator(color: Color(0xFF00796B)),
+              child: CircularProgressIndicator(color: Color(0xFF507B7B)),
             ),
           );
         }
 
-        // ✅ If user is logged in → go to Home
         if (snapshot.hasData) {
           return const HomeScreen();
         }
 
-        // 🚪 If user not logged in → go to Login
         return const LoginScreen();
       },
     );

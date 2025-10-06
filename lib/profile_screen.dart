@@ -41,16 +41,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
-  // ---------------- Load profile ----------------
   Future<void> _loadProfile() async {
     if (user == null) return;
     setState(() => _loading = true);
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user!.uid)
-          .get();
-
+      final doc = await FirebaseFirestore.instance.collection('users').doc(user!.uid).get();
       if (doc.exists) {
         final data = doc.data()!;
         _nameController.text = data['name'] ?? '';
@@ -65,30 +60,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // ---------------- Pick profile image ----------------
   Future<void> _pickImage() async {
     try {
       final picked = await ImagePicker().pickImage(
         source: ImageSource.gallery,
         maxWidth: 300,
         maxHeight: 300,
-        imageQuality: 70, // compress
+        imageQuality: 70,
       );
-
       if (picked != null) setState(() => _profileImage = File(picked.path));
     } catch (e) {
       _showSnack("Error picking image: $e");
     }
   }
 
-  // ---------------- Auto-location ----------------
   Future<void> _getCurrentLocation() async {
     try {
       if (!await Geolocator.isLocationServiceEnabled()) {
         _showSnack("Enable location services");
         return;
       }
-
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -99,15 +90,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return;
       }
 
-      Position pos =
-          await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      Position pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
       final placemarks = await placemarkFromCoordinates(pos.latitude, pos.longitude);
 
       if (placemarks.isNotEmpty) {
         final place = placemarks.first;
         setState(() {
-          _addressController.text =
-              "${place.street}, ${place.locality}, ${place.country}";
+          _addressController.text = "${place.street}, ${place.locality}, ${place.country}";
         });
       }
     } catch (e) {
@@ -115,7 +104,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // ---------------- Pick location on map ----------------
   Future<void> _pickOnMap() async {
     try {
       LatLng? picked = await Navigator.push(
@@ -124,14 +112,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
 
       if (picked != null) {
-        final placemarks =
-            await placemarkFromCoordinates(picked.latitude, picked.longitude);
-
+        final placemarks = await placemarkFromCoordinates(picked.latitude, picked.longitude);
         if (placemarks.isNotEmpty) {
           final place = placemarks.first;
           setState(() {
-            _addressController.text =
-                "${place.street}, ${place.locality}, ${place.country}";
+            _addressController.text = "${place.street}, ${place.locality}, ${place.country}";
           });
         }
       }
@@ -140,7 +125,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // ---------------- Save profile ----------------
   Future<void> _saveProfile() async {
     if (user == null) return;
     if (!_formKey.currentState!.validate()) return;
@@ -150,20 +134,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       String? imageUrl = _profileImageUrl;
 
-      // 1️⃣ Upload image if picked
       if (_profileImage != null) {
-        final storageRef =
-            FirebaseStorage.instance.ref().child('profile_images/${user!.uid}.jpg');
-
+        final storageRef = FirebaseStorage.instance.ref().child('profile_images/${user!.uid}.jpg');
         final uploadTask = storageRef.putFile(_profileImage!);
 
-        // Optional: track progress
         uploadTask.snapshotEvents.listen((snapshot) {
           final progress = snapshot.bytesTransferred / snapshot.totalBytes * 100;
           print("Upload progress: ${progress.toStringAsFixed(2)}%");
         });
 
-        // Set a timeout to avoid hanging
         await uploadTask.timeout(
           const Duration(seconds: 20),
           onTimeout: () {
@@ -175,7 +154,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         imageUrl = await storageRef.getDownloadURL();
       }
 
-      // 2️⃣ Save Firestore data
       final data = {
         'uid': user!.uid,
         'email': user!.email,
@@ -207,10 +185,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showSnack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: Colors.teal),
+    );
   }
 
-  // ---------------- Logout ----------------
   Future<void> _logout() async {
     await FirebaseAuth.instance.signOut();
     Navigator.pushReplacementNamed(context, '/login');
@@ -219,7 +198,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Profile"), backgroundColor: Colors.black),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text("Profile", style: TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.black),
+        elevation: 0,
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: Colors.teal))
           : SingleChildScrollView(
@@ -234,9 +219,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         radius: 50,
                         backgroundImage: _profileImage != null
                             ? FileImage(_profileImage!)
-                            : (_profileImageUrl != null
-                                ? NetworkImage(_profileImageUrl!) as ImageProvider
-                                : null),
+                            : (_profileImageUrl != null ? NetworkImage(_profileImageUrl!) as ImageProvider : null),
                         child: (_profileImage == null && _profileImageUrl == null)
                             ? const Icon(Icons.person, size: 50, color: Colors.grey)
                             : null,
@@ -246,21 +229,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     TextFormField(
                       initialValue: user?.email ?? '',
                       readOnly: true,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: "Email",
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                         filled: true,
-                        fillColor: Colors.grey,
+                        fillColor: Colors.white,
                       ),
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _nameController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: "Full Name",
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                         filled: true,
-                        fillColor: Colors.grey,
+                        fillColor: Colors.white,
                       ),
                       validator: (v) => v == null || v.isEmpty ? 'Enter your name' : null,
                     ),
@@ -268,26 +251,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     TextFormField(
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: "Phone Number",
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                         filled: true,
-                        fillColor: Colors.grey,
+                        fillColor: Colors.white,
                       ),
-                      validator: (v) =>
-                          v == null || v.isEmpty ? 'Enter phone number' : null,
+                      validator: (v) => v == null || v.isEmpty ? 'Enter phone number' : null,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _addressController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: "Address",
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                         filled: true,
-                        fillColor: Colors.grey,
+                        fillColor: Colors.white,
                       ),
-                      validator: (v) =>
-                          v == null || v.isEmpty ? 'Enter address' : null,
+                      validator: (v) => v == null || v.isEmpty ? 'Enter address' : null,
                     ),
                     const SizedBox(height: 12),
                     Row(
@@ -338,7 +319,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-// ---------------- Map Picker Screen ----------------
 class MapPickerScreen extends StatefulWidget {
   const MapPickerScreen({super.key});
 
@@ -388,12 +368,15 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Pick Location"),
-        backgroundColor: Colors.black,
+        title: const Text("Pick Location", style: TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.black),
         actions: [
           IconButton(icon: const Icon(Icons.check), onPressed: _onConfirm),
         ],
+        elevation: 0,
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: Colors.teal))

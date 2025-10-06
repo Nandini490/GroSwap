@@ -89,7 +89,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('✅ Item added successfully!'),
-            backgroundColor: Colors.teal,
+            backgroundColor: Color(0xFF507B7B),
           ),
         );
         Navigator.pop(context);
@@ -117,7 +117,16 @@ class _AddItemScreenState extends State<AddItemScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Item'), backgroundColor: Colors.teal),
+      backgroundColor: const Color(0xFF507B7B), // soft teal background
+      appBar: AppBar(
+        title: const Text(
+          'Add Item',
+          style: TextStyle(color: Colors.black),
+        ),
+        backgroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.black),
+        elevation: 0,
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -135,17 +144,24 @@ class _AddItemScreenState extends State<AddItemScreen> {
                           ? Container(
                               height: 160,
                               width: double.infinity,
-                              color: Colors.teal.withOpacity(0.15),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey.shade300),
+                              ),
                               child: const Center(
-                                  child: Icon(Icons.add_a_photo,
-                                      size: 50, color: Colors.teal)),
+                                child: Icon(Icons.add_a_photo,
+                                    size: 50, color: Colors.grey),
+                              ),
                             )
                           : ClipRRect(
                               borderRadius: BorderRadius.circular(8),
-                              child: Image.file(_selectedImage!,
-                                  height: 160,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover),
+                              child: Image.file(
+                                _selectedImage!,
+                                height: 160,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              ),
                             ),
                     ),
                     if (_selectedImage != null)
@@ -165,36 +181,17 @@ class _AddItemScreenState extends State<AddItemScreen> {
                 const SizedBox(height: 16),
 
                 // Name & Price
-                TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: "Item Name",
-                    prefixIcon: Icon(Icons.label),
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (v) => v == null || v.isEmpty ? 'Enter item name' : null,
-                ),
+                _buildTextField(_nameController, "Item Name", Icons.label),
                 const SizedBox(height: 12),
-                TextFormField(
-                  controller: _priceController,
-                  decoration: const InputDecoration(
-                    labelText: "Price",
-                    prefixIcon: Icon(Icons.attach_money),
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.number,
-                  validator: (v) => v == null || v.isEmpty ? 'Enter price' : null,
-                ),
+                _buildTextField(_priceController, "Price", Icons.attach_money,
+                    inputType: TextInputType.number),
                 const SizedBox(height: 12),
 
-                // Category, Condition, Purpose
-                DropdownButtonFormField<String>(
+                // Category
+                _buildDropdown(
+                  label: "Category",
+                  icon: Icons.category,
                   value: selectedCategory,
-                  decoration: const InputDecoration(
-                    labelText: "Category",
-                    prefixIcon: Icon(Icons.category),
-                    border: OutlineInputBorder(),
-                  ),
                   items: [
                     'Grocery',
                     'Gadgets',
@@ -202,9 +199,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                     'Books',
                     'Electronics',
                     'Clothing'
-                  ]
-                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                      .toList(),
+                  ],
                   onChanged: (v) {
                     setState(() {
                       selectedCategory = v!;
@@ -213,29 +208,23 @@ class _AddItemScreenState extends State<AddItemScreen> {
                   },
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
+
+                // Condition
+                _buildDropdown(
+                  label: "Condition",
+                  icon: Icons.inventory_2_outlined,
                   value: selectedCondition,
-                  decoration: const InputDecoration(
-                    labelText: "Condition",
-                    prefixIcon: Icon(Icons.inventory_2_outlined),
-                    border: OutlineInputBorder(),
-                  ),
-                  items: ['New', 'Like New', 'Used', 'Needs Repair']
-                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                      .toList(),
+                  items: ['New', 'Like New', 'Used', 'Needs Repair'],
                   onChanged: (v) => setState(() => selectedCondition = v!),
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
+
+                // Purpose
+                _buildDropdown(
+                  label: "Purpose",
+                  icon: Icons.swap_horiz,
                   value: selectedPurpose,
-                  decoration: const InputDecoration(
-                    labelText: "Purpose",
-                    prefixIcon: Icon(Icons.swap_horiz),
-                    border: OutlineInputBorder(),
-                  ),
-                  items: ['Sell', 'Swap', 'Rent']
-                      .map((p) => DropdownMenuItem(value: p, child: Text(p)))
-                      .toList(),
+                  items: ['Sell', 'Swap', 'Rent'],
                   onChanged: (v) => setState(() => selectedPurpose = v!),
                 ),
                 const SizedBox(height: 12),
@@ -244,48 +233,22 @@ class _AddItemScreenState extends State<AddItemScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: TextFormField(
-                        controller: _quantityController,
-                        decoration: const InputDecoration(
-                          labelText: "Quantity",
-                          prefixIcon: Icon(Icons.numbers),
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
+                        child: _buildTextField(
+                            _quantityController, "Quantity", Icons.numbers)),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: TextFormField(
-                        controller: _unitController,
-                        decoration: const InputDecoration(
-                          labelText: "Unit (kg, pcs...)",
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
+                        child: _buildTextField(
+                            _unitController, "Unit (kg, pcs...)", Icons.scale)),
                   ],
                 ),
                 const SizedBox(height: 12),
 
-                // Location & Notes
-                TextFormField(
-                  controller: _locationController,
-                  decoration: const InputDecoration(
-                    labelText: "Location (optional)",
-                    prefixIcon: Icon(Icons.location_on_outlined),
-                    border: OutlineInputBorder(),
-                  ),
-                ),
+                _buildTextField(
+                    _locationController, "Location (optional)", Icons.location_on_outlined),
                 const SizedBox(height: 12),
-                TextFormField(
-                  controller: _notesController,
-                  maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: "Notes (optional)",
-                    prefixIcon: Icon(Icons.notes),
-                    border: OutlineInputBorder(),
-                  ),
-                ),
+                _buildTextField(
+                    _notesController, "Notes (optional)", Icons.notes,
+                    maxLines: 2),
                 const SizedBox(height: 12),
 
                 // Expiry date for groceries
@@ -300,7 +263,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                             : 'Expiry: ${_selectedExpiryDate!.toLocal().toString().split(' ')[0]}',
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.teal,
+                        backgroundColor: const Color(0xFF507B7B),
                       ),
                     ),
                   ),
@@ -313,7 +276,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                       : ElevatedButton(
                           onPressed: _saveItem,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.teal,
+                            backgroundColor: const Color(0xFF507B7B),
                             padding: const EdgeInsets.symmetric(
                                 vertical: 14, horizontal: 60),
                           ),
@@ -328,6 +291,59 @@ class _AddItemScreenState extends State<AddItemScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String label,
+      IconData icon,
+      {int maxLines = 1, TextInputType inputType = TextInputType.text}) {
+    return TextFormField(
+      controller: controller,
+      maxLines: maxLines,
+      keyboardType: inputType,
+      style: const TextStyle(color: Colors.black87),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.grey),
+        prefixIcon: Icon(icon, color: Colors.grey),
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      validator: (v) => (v == null || v.isEmpty) && label.contains("optional")
+          ? null
+          : (v == null || v.isEmpty)
+              ? 'Enter $label'
+              : null,
+    );
+  }
+
+  Widget _buildDropdown({
+    required String label,
+    required IconData icon,
+    required String value,
+    required List<String> items,
+    required Function(String?) onChanged,
+  }) {
+    return DropdownButtonFormField<String>(
+      value: value,
+      dropdownColor: Colors.white,
+      style: const TextStyle(color: Colors.black87),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.grey),
+        prefixIcon: Icon(icon, color: Colors.grey),
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      items: items
+          .map((c) => DropdownMenuItem(
+                value: c,
+                child: Text(c, style: const TextStyle(color: Colors.black87)),
+              ))
+          .toList(),
+      onChanged: onChanged,
     );
   }
 }

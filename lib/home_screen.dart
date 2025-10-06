@@ -45,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // 🔹 HOME SCREEN CONTENT
+  // 🔹 HOME CONTENT
   Widget _buildHomeContent() {
     final userId = FirebaseAuth.instance.currentUser!.uid;
 
@@ -58,231 +58,258 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return SafeArea(
-      child: Column(
-        children: [
-          // 🔍 Search bar
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search items...',
-                prefixIcon: const Icon(Icons.search, color: Colors.teal),
-                filled: true,
-                fillColor: Colors.grey[300],
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
+      child: Container(
+        color: const Color(0xFFEDF4F3), // subtle teal-white background
+        child: Column(
+          children: [
+            // 🔍 Search bar
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search items...',
+                  prefixIcon: const Icon(Icons.search, color: Color(0xFF507B7B)),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
+                onChanged: (value) => setState(() {}),
               ),
-              onChanged: (value) => setState(() {}),
             ),
-          ),
 
-          // 🔽 Filters & Sorting
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: DropdownButton<String>(
-                    value: selectedCategory,
-                    dropdownColor: Colors.teal,
-                    style: const TextStyle(color: Colors.white),
-                    underline: const SizedBox(),
-                    items: categories
-                        .map((cat) =>
-                            DropdownMenuItem(value: cat, child: Text(cat)))
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() {
-                          selectedCategory = value;
-                        });
-                      }
-                    },
+            // 🔽 Filters & Sorting
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF507B7B),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: DropdownButton<String>(
+                        value: selectedCategory,
+                        dropdownColor: const Color(0xFF507B7B),
+                        style: const TextStyle(color: Colors.white),
+                        underline: const SizedBox(),
+                        isExpanded: true,
+                        items: categories
+                            .map((cat) => DropdownMenuItem(
+                                value: cat, child: Text(cat)))
+                            .toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() {
+                              selectedCategory = value;
+                            });
+                          }
+                        },
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: DropdownButton<String>(
-                    value: selectedSort,
-                    dropdownColor: Colors.teal,
-                    style: const TextStyle(color: Colors.white),
-                    underline: const SizedBox(),
-                    items: sortOptions
-                        .map((sort) =>
-                            DropdownMenuItem(value: sort, child: Text(sort)))
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() {
-                          selectedSort = value;
-                        });
-                      }
-                    },
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF507B7B),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: DropdownButton<String>(
+                        value: selectedSort,
+                        dropdownColor: const Color(0xFF507B7B),
+                        style: const TextStyle(color: Colors.white),
+                        underline: const SizedBox(),
+                        isExpanded: true,
+                        items: sortOptions
+                            .map((sort) => DropdownMenuItem(
+                                value: sort, child: Text(sort)))
+                            .toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() {
+                              selectedSort = value;
+                            });
+                          }
+                        },
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
-          // 🛍️ Items list
-          Expanded(
-            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: itemsQuery.snapshots(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const Center(
-                      child: CircularProgressIndicator(color: Colors.teal));
-                }
+            // 🛍️ Items list
+            Expanded(
+              child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: itemsQuery.snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const Center(
+                        child: CircularProgressIndicator(
+                            color: Color(0xFF507B7B)));
+                  }
 
-                // Filter search results
-                List<QueryDocumentSnapshot<Map<String, dynamic>>> items =
-                    snapshot.data!.docs.where((doc) {
-                  final name = doc['name'].toString().toLowerCase();
-                  final search = _searchController.text.toLowerCase();
-                  return name.contains(search);
-                }).toList();
+                  List<QueryDocumentSnapshot<Map<String, dynamic>>> items =
+                      snapshot.data!.docs.where((doc) {
+                    final name = doc['name'].toString().toLowerCase();
+                    final search = _searchController.text.toLowerCase();
+                    return name.contains(search);
+                  }).toList();
 
-                // Apply Sorting
-                if (selectedSort == 'Price: Low → High') {
-                  items.sort((a, b) =>
-                      (a['price'] as num).compareTo(b['price'] as num));
-                } else if (selectedSort == 'Price: High → Low') {
-                  items.sort((a, b) =>
-                      (b['price'] as num).compareTo(a['price'] as num));
-                } else if (selectedSort == 'Expiry: Soonest First' &&
-                    selectedCategory == 'Grocery') {
-                  items.sort((a, b) {
-                    final expiryA = a['expiryDate'] != null
-                        ? (a['expiryDate'] as Timestamp).toDate()
-                        : DateTime(2100);
-                    final expiryB = b['expiryDate'] != null
-                        ? (b['expiryDate'] as Timestamp).toDate()
-                        : DateTime(2100);
-                    return expiryA.compareTo(expiryB);
-                  });
-                }
+                  // Sorting logic
+                  if (selectedSort == 'Price: Low → High') {
+                    items.sort((a, b) =>
+                        (a['price'] as num).compareTo(b['price'] as num));
+                  } else if (selectedSort == 'Price: High → Low') {
+                    items.sort((a, b) =>
+                        (b['price'] as num).compareTo(a['price'] as num));
+                  } else if (selectedSort == 'Expiry: Soonest First' &&
+                      selectedCategory == 'Grocery') {
+                    items.sort((a, b) {
+                      final expiryA = a['expiryDate'] != null
+                          ? (a['expiryDate'] as Timestamp).toDate()
+                          : DateTime(2100);
+                      final expiryB = b['expiryDate'] != null
+                          ? (b['expiryDate'] as Timestamp).toDate()
+                          : DateTime(2100);
+                      return expiryA.compareTo(expiryB);
+                    });
+                  }
 
-                if (items.isEmpty) {
-                  return const Center(
-                      child: Text('No items found',
-                          style: TextStyle(color: Colors.grey)));
-                }
+                  if (items.isEmpty) {
+                    return const Center(
+                        child: Text('No items found',
+                            style: TextStyle(color: Colors.grey)));
+                  }
 
-                return ListView.builder(
-                  itemCount: items.length,
-                  itemBuilder: (context, index) {
-                    final item = items[index];
-                    final itemId = item.id;
+                  return ListView.builder(
+                    itemCount: items.length,
+                    itemBuilder: (context, index) {
+                      final item = items[index];
+                      final itemId = item.id;
 
-                    return StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('wishlist')
-                          .where('userId', isEqualTo: userId)
-                          .where('itemId', isEqualTo: itemId)
-                          .snapshots(),
-                      builder: (context, wishlistSnapshot) {
-                        final isFavorited = wishlistSnapshot.hasData &&
-                            wishlistSnapshot.data!.docs.isNotEmpty;
+                      return StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('wishlist')
+                            .where('userId', isEqualTo: userId)
+                            .where('itemId', isEqualTo: itemId)
+                            .snapshots(),
+                        builder: (context, wishlistSnapshot) {
+                          final isFavorited = wishlistSnapshot.hasData &&
+                              wishlistSnapshot.data!.docs.isNotEmpty;
 
-                        return Card(
-                          color: Colors.grey[200],
-                          margin: const EdgeInsets.symmetric(
-                              vertical: 6, horizontal: 12),
-                          child: ListTile(
-                            leading: item['imageUrl'] != null
-                                ? Image.network(
-                                    item['imageUrl'],
-                                    width: 50,
-                                    height: 50,
-                                    fit: BoxFit.cover,
-                                  )
-                                : const Icon(Icons.image, color: Colors.grey),
-                            title: Text(
-                              item['name'],
-                              style: const TextStyle(color: Colors.black),
+                          return Card(
+                            color: Colors.white,
+                            margin: const EdgeInsets.symmetric(
+                                vertical: 6, horizontal: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
                             ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '${item['type']} • \$${item['price']}',
-                                  style: const TextStyle(color: Colors.grey),
-                                ),
-
-                                // 🧭 Expiry for groceries
-                                if (item['category'] == 'Grocery' &&
-                                    item['expiryDate'] != null)
-                                  Builder(builder: (context) {
-                                    final expiry =
-                                        (item['expiryDate'] as Timestamp)
-                                            .toDate();
-                                    final now = DateTime.now();
-                                    final daysLeft =
-                                        expiry.difference(now).inDays;
-
-                                    String expiryText;
-                                    Color expiryColor;
-
-                                    if (daysLeft < 0) {
-                                      expiryText = 'Expired!';
-                                      expiryColor = Colors.red;
-                                    } else if (daysLeft == 0) {
-                                      expiryText = 'Expires today!';
-                                      expiryColor = Colors.orange;
-                                    } else {
-                                      expiryText = 'Expires in $daysLeft days';
-                                      expiryColor = daysLeft <= 3
-                                          ? Colors.orange
-                                          : Colors.green;
-                                    }
-
-                                    return Text(
-                                      expiryText,
-                                      style: TextStyle(
-                                          color: expiryColor,
-                                          fontWeight: FontWeight.w500),
-                                    );
-                                  }),
-                              ],
-                            ),
-                            trailing: IconButton(
-                              icon: Icon(
-                                isFavorited
-                                    ? Icons.favorite
-                                    : Icons.favorite_border,
-                                color: Colors.teal,
+                            elevation: 3,
+                            child: ListTile(
+                              leading: item['imageUrl'] != null
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(6),
+                                      child: Image.network(
+                                        item['imageUrl'],
+                                        width: 50,
+                                        height: 50,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    )
+                                  : const Icon(Icons.image,
+                                      color: Colors.grey, size: 40),
+                              title: Text(
+                                item['name'],
+                                style: const TextStyle(
+                                    color: Color(0xFF3A5F5F),
+                                    fontWeight: FontWeight.bold),
                               ),
-                              onPressed: () async {
-                                final wishlistRef = FirebaseFirestore.instance
-                                    .collection('wishlist');
-                                if (isFavorited) {
-                                  for (var doc
-                                      in wishlistSnapshot.data!.docs) {
-                                    await wishlistRef.doc(doc.id).delete();
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${item['type']} • ₹${item['price']}',
+                                    style: const TextStyle(
+                                        color: Colors.grey, fontSize: 13),
+                                  ),
+                                  if (item['category'] == 'Grocery' &&
+                                      item['expiryDate'] != null)
+                                    Builder(builder: (context) {
+                                      final expiry =
+                                          (item['expiryDate'] as Timestamp)
+                                              .toDate();
+                                      final now = DateTime.now();
+                                      final daysLeft =
+                                          expiry.difference(now).inDays;
+
+                                      String expiryText;
+                                      Color expiryColor;
+
+                                      if (daysLeft < 0) {
+                                        expiryText = 'Expired!';
+                                        expiryColor = Colors.red;
+                                      } else if (daysLeft == 0) {
+                                        expiryText = 'Expires today!';
+                                        expiryColor = Colors.orange;
+                                      } else {
+                                        expiryText = 'Expires in $daysLeft days';
+                                        expiryColor = daysLeft <= 3
+                                            ? Colors.orange
+                                            : Colors.green;
+                                      }
+
+                                      return Text(
+                                        expiryText,
+                                        style: TextStyle(
+                                            color: expiryColor,
+                                            fontWeight: FontWeight.w500),
+                                      );
+                                    }),
+                                ],
+                              ),
+                              trailing: IconButton(
+                                icon: Icon(
+                                  isFavorited
+                                      ? Icons.favorite
+                                      : Icons.favorite_border,
+                                  color: const Color(0xFF507B7B),
+                                ),
+                                onPressed: () async {
+                                  final wishlistRef = FirebaseFirestore.instance
+                                      .collection('wishlist');
+                                  if (isFavorited) {
+                                    for (var doc
+                                        in wishlistSnapshot.data!.docs) {
+                                      await wishlistRef.doc(doc.id).delete();
+                                    }
+                                  } else {
+                                    await wishlistRef.add({
+                                      'userId': userId,
+                                      'itemId': itemId,
+                                      'timestamp': FieldValue.serverTimestamp(),
+                                    });
                                   }
-                                } else {
-                                  await wishlistRef.add({
-                                    'userId': userId,
-                                    'itemId': itemId,
-                                    'timestamp':
-                                        FieldValue.serverTimestamp(),
-                                  });
-                                }
-                              },
+                                },
+                              ),
                             ),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                );
-              },
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -305,11 +332,10 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Resourcely'),
-        backgroundColor: Colors.teal,
+        backgroundColor: const Color(0xFF507B7B),
         elevation: 0,
         actions: _selectedIndex == 0
             ? [
-                // ❤️ Wishlist button
                 IconButton(
                   icon: const Icon(Icons.favorite, color: Colors.white),
                   onPressed: () {
@@ -336,8 +362,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       builder: (context) => const AddItemScreen()),
                 );
               },
-              backgroundColor: Colors.teal,
-              child: const Icon(Icons.add),
+              backgroundColor: const Color(0xFF507B7B),
+              child: const Icon(Icons.add, color: Colors.white),
             )
           : null,
       bottomNavigationBar: BottomNavigationBar(
@@ -345,7 +371,7 @@ class _HomeScreenState extends State<HomeScreen> {
         selectedItemColor: Colors.white,
         unselectedItemColor: Colors.white70,
         onTap: _onBottomNavTap,
-        backgroundColor: Colors.teal,
+        backgroundColor: const Color(0xFF507B7B),
         type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
@@ -367,7 +393,7 @@ class PlaceholderScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.teal[50],
+      backgroundColor: const Color(0xFFEDF4F3),
       body: SafeArea(
         child: Center(
           child: Text(

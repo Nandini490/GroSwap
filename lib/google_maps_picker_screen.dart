@@ -25,7 +25,10 @@ class _GoogleMapsPickerScreenState extends State<GoogleMapsPickerScreen> {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enable location services')),
+        const SnackBar(
+          content: Text('Please enable location services'),
+          backgroundColor: Color(0xFF004D40),
+        ),
       );
       setState(() => _loading = false);
       return;
@@ -36,7 +39,10 @@ class _GoogleMapsPickerScreenState extends State<GoogleMapsPickerScreen> {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Location permission denied')),
+          const SnackBar(
+            content: Text('Location permission denied'),
+            backgroundColor: Color(0xFF004D40),
+          ),
         );
         setState(() => _loading = false);
         return;
@@ -46,8 +52,11 @@ class _GoogleMapsPickerScreenState extends State<GoogleMapsPickerScreen> {
     if (permission == LocationPermission.deniedForever) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text(
-                'Location permission permanently denied. Enable it from settings')),
+          content: Text(
+            'Location permission permanently denied. Enable it from settings',
+          ),
+          backgroundColor: Color(0xFF004D40),
+        ),
       );
       setState(() => _loading = false);
       return;
@@ -71,6 +80,13 @@ class _GoogleMapsPickerScreenState extends State<GoogleMapsPickerScreen> {
   void _onConfirm() {
     if (_pickedLocation != null) {
       Navigator.pop(context, _pickedLocation);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a location first'),
+          backgroundColor: Color(0xFF004D40),
+        ),
+      );
     }
   }
 
@@ -79,33 +95,113 @@ class _GoogleMapsPickerScreenState extends State<GoogleMapsPickerScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Pick Location'),
-        backgroundColor: Colors.teal,
+        centerTitle: true,
+        flexibleSpace: const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF004D40), Color(0xFF00796B)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.check),
+            icon: const Icon(Icons.check, color: Colors.white),
             onPressed: _onConfirm,
           ),
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: Colors.teal))
-          : GoogleMap(
-              initialCameraPosition: CameraPosition(
-                target: _pickedLocation ?? const LatLng(20.5937, 78.9629),
-                zoom: 15,
+          ? Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF004D40), Color(0xFF00796B)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
               ),
-              onMapCreated: (controller) => _mapController = controller,
-              onTap: _onMapTap,
-              myLocationEnabled: true,
-              myLocationButtonEnabled: true,
-              markers: _pickedLocation != null
-                  ? {
-                      Marker(
-                        markerId: const MarkerId('picked-location'),
-                        position: _pickedLocation!,
+              child: const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
+            )
+          : Stack(
+              children: [
+                GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    target: _pickedLocation ?? const LatLng(20.5937, 78.9629),
+                    zoom: 15,
+                  ),
+                  onMapCreated: (controller) => _mapController = controller,
+                  onTap: _onMapTap,
+                  myLocationEnabled: true,
+                  myLocationButtonEnabled: true,
+                  markers: _pickedLocation != null
+                      ? {
+                          Marker(
+                            markerId: const MarkerId('picked-location'),
+                            position: _pickedLocation!,
+                          ),
+                        }
+                      : {},
+                ),
+
+                // Bottom info card
+                if (_pickedLocation != null)
+                  Positioned(
+                    bottom: 20,
+                    left: 20,
+                    right: 20,
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                    }
-                  : {},
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            "📍 Selected Location",
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            "${_pickedLocation!.latitude.toStringAsFixed(5)}, ${_pickedLocation!.longitude.toStringAsFixed(5)}",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          ElevatedButton.icon(
+                            onPressed: _onConfirm,
+                            icon: const Icon(Icons.check, color: Colors.white),
+                            label: const Text(
+                              "Confirm Location",
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF00796B),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 20,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
             ),
     );
   }
