@@ -11,7 +11,6 @@ class MyListScreen extends StatefulWidget {
 
 class _MyListScreenState extends State<MyListScreen> {
   final userId = FirebaseAuth.instance.currentUser!.uid;
-  Map<String, DocumentSnapshot> itemsMap = {};
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +46,6 @@ class _MyListScreenState extends State<MyListScreen> {
             );
           }
 
-          // Get all itemIds
           final itemIds = myListDocs.map((doc) => doc['itemId'] as String).toList();
 
           return FutureBuilder<QuerySnapshot>(
@@ -62,7 +60,7 @@ class _MyListScreenState extends State<MyListScreen> {
                 );
               }
 
-              // Map itemId → DocumentSnapshot for quick lookup
+              // Map itemId → DocumentSnapshot
               final itemsData = {for (var doc in itemSnapshot.data!.docs) doc.id: doc};
 
               return ListView.builder(
@@ -75,6 +73,15 @@ class _MyListScreenState extends State<MyListScreen> {
 
                   if (item == null) return const SizedBox();
 
+                  // Get image URL with fallback
+                  final rawUrl = item['imageUrl'];
+                  final imageUrl = (rawUrl != null && rawUrl.toString().isNotEmpty)
+                      ? rawUrl.toString()
+                      : 'https://via.placeholder.com/150';
+
+                  // Get type with fallback
+                  final type = (item['type'] ?? item['category'] ?? 'No Type').toString();
+
                   return Container(
                     margin: const EdgeInsets.symmetric(vertical: 8),
                     child: Card(
@@ -84,28 +91,31 @@ class _MyListScreenState extends State<MyListScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        leading: item['imageUrl'] != null
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.network(
-                                  item['imageUrl'],
-                                  width: 55,
-                                  height: 55,
-                                  fit: BoxFit.cover,
-                                ),
-                              )
-                            : const Icon(Icons.image, color: Colors.grey),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            imageUrl,
+                            width: 55,
+                            height: 55,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              width: 55,
+                              height: 55,
+                              color: Colors.grey[300],
+                              child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                            ),
+                          ),
+                        ),
                         title: Text(
-                          item['name'],
+                          item['name'] ?? 'Unnamed',
                           style: const TextStyle(
                             color: Colors.black,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         subtitle: Text(
-                          '${item['type']} • \$${item['price']}',
+                          '$type • ₹${item['price'] ?? 0}',
                           style: const TextStyle(color: Colors.grey),
                         ),
                         trailing: const Icon(

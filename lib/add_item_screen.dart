@@ -15,7 +15,6 @@ class AddItemScreen extends StatefulWidget {
 class _AddItemScreenState extends State<AddItemScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers
   final _nameController = TextEditingController();
   final _priceController = TextEditingController();
   final _quantityController = TextEditingController();
@@ -30,16 +29,32 @@ class _AddItemScreenState extends State<AddItemScreen> {
   File? _selectedImage;
   bool _isLoading = false;
 
-  // Pick image
+  // Pick Image from Gallery
   Future<void> _pickImage() async {
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (picked != null) setState(() => _selectedImage = File(picked.path));
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800, // Resize for performance
+        maxHeight: 800,
+        imageQuality: 80, // Compress image
+      );
+
+      if (picked != null) {
+        final file = File(picked.path);
+        if (file.existsSync()) {
+          setState(() => _selectedImage = file);
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error picking image: $e')),
+      );
+    }
   }
 
-  // Remove image
   void _removeImage() => setState(() => _selectedImage = null);
 
-  // Pick expiry date
+  // Pick Expiry Date
   Future<void> _pickExpiryDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -50,14 +65,15 @@ class _AddItemScreenState extends State<AddItemScreen> {
     if (picked != null) setState(() => _selectedExpiryDate = picked);
   }
 
-  // Save item
+  // Save Item to Firestore
   Future<void> _saveItem() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
+
     try {
       final user = FirebaseAuth.instance.currentUser!;
-      String? imageUrl;
+      String imageUrl = '';
 
       if (_selectedImage != null) {
         final ref = FirebaseStorage.instance
@@ -67,7 +83,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
         imageUrl = await ref.getDownloadURL();
       }
 
-      await FirebaseFirestore.instance.collection('items').add({
+      final data = {
         'userId': user.uid,
         'userEmail': user.email,
         'name': _nameController.text.trim(),
@@ -81,9 +97,13 @@ class _AddItemScreenState extends State<AddItemScreen> {
         'notes': _notesController.text.trim(),
         'imageUrl': imageUrl,
         'timestamp': FieldValue.serverTimestamp(),
-        if (selectedCategory == 'Grocery' && _selectedExpiryDate != null)
-          'expiryDate': _selectedExpiryDate,
-      });
+      };
+
+      if (selectedCategory == 'Grocery' && _selectedExpiryDate != null) {
+        data['expiryDate'] = Timestamp.fromDate(_selectedExpiryDate!);
+      }
+
+      await FirebaseFirestore.instance.collection('items').add(data);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -96,7 +116,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
       );
     } finally {
       setState(() => _isLoading = false);
@@ -117,12 +137,9 @@ class _AddItemScreenState extends State<AddItemScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF507B7B), // soft teal background
+      backgroundColor: const Color(0xFF507B7B),
       appBar: AppBar(
-        title: const Text(
-          'Add Item',
-          style: TextStyle(color: Colors.black),
-        ),
+        title: const Text('Add Item', style: TextStyle(color: Colors.black)),
         backgroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Colors.black),
         elevation: 0,
@@ -140,8 +157,25 @@ class _AddItemScreenState extends State<AddItemScreen> {
                   children: [
                     GestureDetector(
                       onTap: _pickImage,
-                      child: _selectedImage == null
-                          ? Container(
+                      child: _selectedImage != null && _selectedImage!.existsSync()
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.file(
+                                _selectedImage!,
+                                height: 160,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    height: 160,
+                                    width: double.infinity,
+                                    color: Colors.grey[300],
+                                    child: const Icon(Icons.broken_image, size: 50),
+                                  );
+                                },
+                              ),
+                            )
+                          : Container(
                               height: 160,
                               width: double.infinity,
                               decoration: BoxDecoration(
@@ -150,17 +184,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                                 border: Border.all(color: Colors.grey.shade300),
                               ),
                               child: const Center(
-                                child: Icon(Icons.add_a_photo,
-                                    size: 50, color: Colors.grey),
-                              ),
-                            )
-                          : ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.file(
-                                _selectedImage!,
-                                height: 160,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
+                                child: Icon(Icons.add_a_photo, size: 50, color: Colors.grey),
                               ),
                             ),
                     ),
@@ -180,14 +204,12 @@ class _AddItemScreenState extends State<AddItemScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Name & Price
                 _buildTextField(_nameController, "Item Name", Icons.label),
                 const SizedBox(height: 12),
                 _buildTextField(_priceController, "Price", Icons.attach_money,
                     inputType: TextInputType.number),
                 const SizedBox(height: 12),
 
-                // Category
                 _buildDropdown(
                   label: "Category",
                   icon: Icons.category,
@@ -209,7 +231,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // Condition
                 _buildDropdown(
                   label: "Condition",
                   icon: Icons.inventory_2_outlined,
@@ -219,7 +240,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // Purpose
                 _buildDropdown(
                   label: "Purpose",
                   icon: Icons.swap_horiz,
@@ -229,7 +249,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // Quantity & Unit
                 Row(
                   children: [
                     Expanded(
@@ -251,7 +270,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
                     maxLines: 2),
                 const SizedBox(height: 12),
 
-                // Expiry date for groceries
                 if (selectedCategory == 'Grocery')
                   Center(
                     child: ElevatedButton.icon(
@@ -269,7 +287,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
                   ),
                 const SizedBox(height: 20),
 
-                // Save button
                 Center(
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.teal)

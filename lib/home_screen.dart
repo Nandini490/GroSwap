@@ -45,7 +45,6 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // 🔹 HOME CONTENT
   Widget _buildHomeContent() {
     final userId = FirebaseAuth.instance.currentUser!.uid;
 
@@ -59,10 +58,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return SafeArea(
       child: Container(
-        color: const Color(0xFFEDF4F3), // subtle teal-white background
+        color: const Color(0xFFEDF4F3),
         child: Column(
           children: [
-            // 🔍 Search bar
             Padding(
               padding: const EdgeInsets.all(12),
               child: TextField(
@@ -77,11 +75,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     borderSide: BorderSide.none,
                   ),
                 ),
-                onChanged: (value) => setState(() {}),
+                onChanged: (_) => setState(() {}),
               ),
             ),
-
-            // 🔽 Filters & Sorting
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(
@@ -144,8 +140,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-
-            // 🛍️ Items list
             Expanded(
               child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                 stream: itemsQuery.snapshots(),
@@ -156,28 +150,29 @@ class _HomeScreenState extends State<HomeScreen> {
                             color: Color(0xFF507B7B)));
                   }
 
-                  List<QueryDocumentSnapshot<Map<String, dynamic>>> items =
-                      snapshot.data!.docs.where((doc) {
-                    final name = doc['name'].toString().toLowerCase();
+                  final items = snapshot.data!.docs.where((doc) {
+                    final name = (doc.data()['name'] ?? '').toString().toLowerCase();
                     final search = _searchController.text.toLowerCase();
                     return name.contains(search);
                   }).toList();
 
-                  // Sorting logic
+                  // Sorting
                   if (selectedSort == 'Price: Low → High') {
                     items.sort((a, b) =>
-                        (a['price'] as num).compareTo(b['price'] as num));
+                        ((a.data()['price'] ?? 0) as num)
+                            .compareTo((b.data()['price'] ?? 0) as num));
                   } else if (selectedSort == 'Price: High → Low') {
                     items.sort((a, b) =>
-                        (b['price'] as num).compareTo(a['price'] as num));
+                        ((b.data()['price'] ?? 0) as num)
+                            .compareTo((a.data()['price'] ?? 0) as num));
                   } else if (selectedSort == 'Expiry: Soonest First' &&
                       selectedCategory == 'Grocery') {
                     items.sort((a, b) {
-                      final expiryA = a['expiryDate'] != null
-                          ? (a['expiryDate'] as Timestamp).toDate()
+                      final expiryA = a.data()['expiryDate'] != null
+                          ? (a.data()['expiryDate'] as Timestamp).toDate()
                           : DateTime(2100);
-                      final expiryB = b['expiryDate'] != null
-                          ? (b['expiryDate'] as Timestamp).toDate()
+                      final expiryB = b.data()['expiryDate'] != null
+                          ? (b.data()['expiryDate'] as Timestamp).toDate()
                           : DateTime(2100);
                       return expiryA.compareTo(expiryB);
                     });
@@ -193,7 +188,21 @@ class _HomeScreenState extends State<HomeScreen> {
                     itemCount: items.length,
                     itemBuilder: (context, index) {
                       final item = items[index];
+                      final data = item.data();
                       final itemId = item.id;
+
+                      final name = data['name'] ?? 'Unnamed';
+                      final type = (data['type'] ?? data['category'] ?? 'No Type').toString();
+                      final price = data['price'] ?? 0;
+                      final category = data['category'] ?? '';
+
+                      // Image handling
+                      final rawUrl = data['imageUrl'];
+                      final imageUrl = (rawUrl != null && rawUrl.toString().isNotEmpty)
+                          ? rawUrl.toString()
+                          : 'https://via.placeholder.com/150';
+
+                      final expiryDate = data['expiryDate'];
 
                       return StreamBuilder<QuerySnapshot>(
                         stream: FirebaseFirestore.instance
@@ -214,20 +223,24 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             elevation: 3,
                             child: ListTile(
-                              leading: item['imageUrl'] != null
-                                  ? ClipRRect(
-                                      borderRadius: BorderRadius.circular(6),
-                                      child: Image.network(
-                                        item['imageUrl'],
+                              leading: ClipRRect(
+                                borderRadius: BorderRadius.circular(6),
+                                child: Image.network(
+                                  imageUrl,
+                                  width: 50,
+                                  height: 50,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      Container(
                                         width: 50,
                                         height: 50,
-                                        fit: BoxFit.cover,
+                                        color: Colors.grey[300],
+                                        child: const Icon(Icons.image_not_supported),
                                       ),
-                                    )
-                                  : const Icon(Icons.image,
-                                      color: Colors.grey, size: 40),
+                                ),
+                              ),
                               title: Text(
-                                item['name'],
+                                name,
                                 style: const TextStyle(
                                     color: Color(0xFF3A5F5F),
                                     fontWeight: FontWeight.bold),
@@ -236,19 +249,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    '${item['type']} • ₹${item['price']}',
-                                    style: const TextStyle(
-                                        color: Colors.grey, fontSize: 13),
+                                    '$type • ₹$price',
+                                    style: const TextStyle(color: Colors.grey, fontSize: 13),
                                   ),
-                                  if (item['category'] == 'Grocery' &&
-                                      item['expiryDate'] != null)
+                                  if (category == 'Grocery' && expiryDate != null)
                                     Builder(builder: (context) {
-                                      final expiry =
-                                          (item['expiryDate'] as Timestamp)
-                                              .toDate();
-                                      final now = DateTime.now();
-                                      final daysLeft =
-                                          expiry.difference(now).inDays;
+                                      final expiry = (expiryDate as Timestamp).toDate();
+                                      final daysLeft = expiry.difference(DateTime.now()).inDays;
 
                                       String expiryText;
                                       Color expiryColor;
@@ -261,33 +268,25 @@ class _HomeScreenState extends State<HomeScreen> {
                                         expiryColor = Colors.orange;
                                       } else {
                                         expiryText = 'Expires in $daysLeft days';
-                                        expiryColor = daysLeft <= 3
-                                            ? Colors.orange
-                                            : Colors.green;
+                                        expiryColor = daysLeft <= 3 ? Colors.orange : Colors.green;
                                       }
 
                                       return Text(
                                         expiryText,
-                                        style: TextStyle(
-                                            color: expiryColor,
-                                            fontWeight: FontWeight.w500),
+                                        style: TextStyle(color: expiryColor, fontWeight: FontWeight.w500),
                                       );
                                     }),
                                 ],
                               ),
                               trailing: IconButton(
                                 icon: Icon(
-                                  isFavorited
-                                      ? Icons.favorite
-                                      : Icons.favorite_border,
+                                  isFavorited ? Icons.favorite : Icons.favorite_border,
                                   color: const Color(0xFF507B7B),
                                 ),
                                 onPressed: () async {
-                                  final wishlistRef = FirebaseFirestore.instance
-                                      .collection('wishlist');
+                                  final wishlistRef = FirebaseFirestore.instance.collection('wishlist');
                                   if (isFavorited) {
-                                    for (var doc
-                                        in wishlistSnapshot.data!.docs) {
+                                    for (var doc in wishlistSnapshot.data!.docs) {
                                       await wishlistRef.doc(doc.id).delete();
                                     }
                                   } else {
@@ -314,7 +313,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // 🔹 OTHER TABS
   final List<Widget> _otherTabs = const [
     PlaceholderScreen(title: 'Messages'),
     MyListScreen(),
@@ -341,8 +339,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                          builder: (context) => const WishlistScreen()),
+                      MaterialPageRoute(builder: (context) => const WishlistScreen()),
                     );
                   },
                 ),
@@ -358,8 +355,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                      builder: (context) => const AddItemScreen()),
+                  MaterialPageRoute(builder: (context) => const AddItemScreen()),
                 );
               },
               backgroundColor: const Color(0xFF507B7B),
@@ -377,8 +373,7 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.message), label: 'Messages'),
           BottomNavigationBarItem(icon: Icon(Icons.list), label: 'MyList'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_cart), label: 'Cart'),
+          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Cart'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),

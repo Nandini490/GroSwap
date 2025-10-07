@@ -51,11 +51,21 @@ class WishlistScreen extends StatelessWidget {
               final itemId = wishlistItem['itemId'];
 
               // Fetch full item details
-              return FutureBuilder(
+              return FutureBuilder<DocumentSnapshot>(
                 future: FirebaseFirestore.instance.collection('items').doc(itemId).get(),
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) return const SizedBox();
                   final item = snapshot.data!;
+
+                  // Image URL fallback
+                  final rawUrl = item['imageUrl'];
+                  final imageUrl = (rawUrl != null && rawUrl.toString().isNotEmpty)
+                      ? rawUrl.toString()
+                      : 'https://via.placeholder.com/150';
+
+                  // Type fallback
+                  final type = (item['type'] ?? item['category'] ?? 'No Type').toString();
+
                   return Card(
                     color: Colors.white,
                     elevation: 2,
@@ -64,23 +74,27 @@ class WishlistScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: ListTile(
-                      leading: item['imageUrl'] != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(6),
-                              child: Image.network(
-                                item['imageUrl'],
-                                width: 50,
-                                height: 50,
-                                fit: BoxFit.cover,
-                              ),
-                            )
-                          : const Icon(Icons.image, color: Colors.grey),
+                      leading: ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: Image.network(
+                          imageUrl,
+                          width: 50,
+                          height: 50,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            width: 50,
+                            height: 50,
+                            color: Colors.grey[300],
+                            child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                          ),
+                        ),
+                      ),
                       title: Text(
-                        item['name'],
+                        item['name'] ?? 'Unnamed',
                         style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
                       ),
                       subtitle: Text(
-                        '${item['type']} • \$${item['price']}',
+                        '$type • ₹${item['price'] ?? 0}',
                         style: const TextStyle(color: Colors.grey),
                       ),
                     ),
