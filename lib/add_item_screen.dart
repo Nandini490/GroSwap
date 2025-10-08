@@ -34,9 +34,9 @@ class _AddItemScreenState extends State<AddItemScreen> {
     try {
       final picked = await ImagePicker().pickImage(
         source: ImageSource.gallery,
-        maxWidth: 800, // Resize for performance
+        maxWidth: 800,
         maxHeight: 800,
-        imageQuality: 80, // Compress image
+        imageQuality: 80,
       );
 
       if (picked != null) {
@@ -65,7 +65,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
     if (picked != null) setState(() => _selectedExpiryDate = picked);
   }
 
-  // Save Item to Firestore
+  // Save Item to Firestore and MyList
   Future<void> _saveItem() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -103,7 +103,15 @@ class _AddItemScreenState extends State<AddItemScreen> {
         data['expiryDate'] = Timestamp.fromDate(_selectedExpiryDate!);
       }
 
-      await FirebaseFirestore.instance.collection('items').add(data);
+      // Save item to 'items' collection
+      final docRef = await FirebaseFirestore.instance.collection('items').add(data);
+
+      // Automatically add item to 'mylist'
+      await FirebaseFirestore.instance.collection('mylist').add({
+        'userId': user.uid,
+        'itemId': docRef.id,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
