@@ -196,11 +196,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       final price = data['price'] ?? 0;
                       final category = data['category'] ?? '';
 
-                      // Image handling
+                      // ✅ Image handling fix
                       final rawUrl = data['imageUrl'];
                       final imageUrl = (rawUrl != null && rawUrl.toString().isNotEmpty)
                           ? rawUrl.toString()
-                          : 'https://via.placeholder.com/150';
+                          : '';
 
                       final expiryDate = data['expiryDate'];
 
@@ -223,21 +223,30 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             elevation: 3,
                             child: ListTile(
+                              // ✅ Fixed image loader
                               leading: ClipRRect(
                                 borderRadius: BorderRadius.circular(6),
-                                child: Image.network(
-                                  imageUrl,
-                                  width: 50,
-                                  height: 50,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) =>
-                                      Container(
+                                child: (imageUrl.isNotEmpty)
+                                    ? Image.network(
+                                        imageUrl,
                                         width: 50,
                                         height: 50,
-                                        color: Colors.grey[300],
-                                        child: const Icon(Icons.image_not_supported),
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return Image.asset(
+                                            'assets/images/placeholder.jpg',
+                                            width: 50,
+                                            height: 50,
+                                            fit: BoxFit.cover,
+                                          );
+                                        },
+                                      )
+                                    : Image.asset(
+                                        'assets/images/placeholder.jpg',
+                                        width: 50,
+                                        height: 50,
+                                        fit: BoxFit.cover,
                                       ),
-                                ),
                               ),
                               title: Text(
                                 name,

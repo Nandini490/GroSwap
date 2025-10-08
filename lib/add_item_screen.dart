@@ -2,8 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:cloudinary_public/cloudinary_public.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class AddItemScreen extends StatefulWidget {
   const AddItemScreen({super.key});
@@ -27,34 +28,113 @@ class _AddItemScreenState extends State<AddItemScreen> {
   String selectedPurpose = 'Sell';
   DateTime? _selectedExpiryDate;
   File? _selectedImage;
+  String? _uploadedImageUrl; // Store the uploaded Cloudinary URL
   bool _isLoading = false;
+  bool _isUploadingImage = false; // Track image upload state
 
-  // Pick Image from Gallery
+  // Cloudinary setup
+  final cloudinary = CloudinaryPublic(
+    'dsq93kxoa', // Your Cloudinary cloud name
+    'resourcely_items', // Your upload preset
+    cache: false,
+  );
+
+  // Pick image from gallery and upload immediately
   Future<void> _pickImage() async {
     try {
-      final picked = await ImagePicker().pickImage(
+      // Request storage permission for Android
+      if (Platform.isAndroid) {
+        PermissionStatus status = await Permission.storage.request();
+        if (!status.isGranted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Permission denied to access storage')),
+          );
+          return;
+        }
+      }
+
+      // Pick image
+      final pickedFile = await ImagePicker().pickImage(
         source: ImageSource.gallery,
         maxWidth: 800,
         maxHeight: 800,
         imageQuality: 80,
       );
 
-      if (picked != null) {
-        final file = File(picked.path);
+      if (pickedFile != null) {
+        final file = File(pickedFile.path);
         if (file.existsSync()) {
-          setState(() => _selectedImage = file);
+          setState(() {
+            _selectedImage = file;
+            _isUploadingImage = true;
+          });
+          print("Selected image path: ${file.path}");
+
+          // Upload to Cloudinary immediately
+          await _uploadToCloudinary(file);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Selected file does not exist')),
+          );
         }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error picking image: $e')),
       );
+      setState(() => _isUploadingImage = false);
     }
   }
 
-  void _removeImage() => setState(() => _selectedImage = null);
+  // Upload image to Cloudinary
+  Future<void> _uploadToCloudinary(File imageFile) async {
+    try {
+      CloudinaryResponse response = await cloudinary.uploadFile(
+        CloudinaryFile.fromFile(
+          imageFile.path,
+          folder: 'resourcely_items',
+        ),
+      );
 
-  // Pick Expiry Date
+      setState(() {
+        _uploadedImageUrl = response.secureUrl;
+        _isUploadingImage = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Image uploaded successfully!'),
+            backgroundColor: Color(0xFF507B7B),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+
+      print("Image uploaded to Cloudinary: $_uploadedImageUrl");
+    } catch (e) {
+      setState(() => _isUploadingImage = false);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to upload image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      print("Cloudinary upload error: $e");
+    }
+  }
+
+  void _removeImage() {
+    setState(() {
+      _selectedImage = null;
+      _uploadedImageUrl = null;
+    });
+  }
+
+  // Pick expiry date for grocery items
   Future<void> _pickExpiryDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -65,23 +145,25 @@ class _AddItemScreenState extends State<AddItemScreen> {
     if (picked != null) setState(() => _selectedExpiryDate = picked);
   }
 
-  // Save Item to Firestore and MyList
+  // Save item to Firestore with the uploaded image URL
   Future<void> _saveItem() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Check if image is still uploading
+    if (_isUploadingImage) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please wait for image upload to complete'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
     try {
       final user = FirebaseAuth.instance.currentUser!;
-      String imageUrl = '';
-
-      if (_selectedImage != null) {
-        final ref = FirebaseStorage.instance
-            .ref()
-            .child('item_images/${DateTime.now().millisecondsSinceEpoch}.jpg');
-        await ref.putFile(_selectedImage!);
-        imageUrl = await ref.getDownloadURL();
-      }
 
       final data = {
         'userId': user.uid,
@@ -95,7 +177,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
         'unit': _unitController.text.trim(),
         'location': _locationController.text.trim(),
         'notes': _notesController.text.trim(),
-        'imageUrl': imageUrl,
+        'imageUrl': _uploadedImageUrl ?? '', // Use the pre-uploaded URL
         'timestamp': FieldValue.serverTimestamp(),
       };
 
@@ -103,10 +185,9 @@ class _AddItemScreenState extends State<AddItemScreen> {
         data['expiryDate'] = Timestamp.fromDate(_selectedExpiryDate!);
       }
 
-      // Save item to 'items' collection
       final docRef = await FirebaseFirestore.instance.collection('items').add(data);
 
-      // Automatically add item to 'mylist'
+      // Add item to 'mylist'
       await FirebaseFirestore.instance.collection('mylist').add({
         'userId': user.uid,
         'itemId': docRef.id,
@@ -160,27 +241,47 @@ class _AddItemScreenState extends State<AddItemScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Image Picker
+                // Image Picker with Upload Indicator
                 Stack(
                   children: [
                     GestureDetector(
-                      onTap: _pickImage,
+                      onTap: _isUploadingImage ? null : _pickImage,
                       child: _selectedImage != null && _selectedImage!.existsSync()
                           ? ClipRRect(
                               borderRadius: BorderRadius.circular(8),
-                              child: Image.file(
-                                _selectedImage!,
-                                height: 160,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
+                              child: Stack(
+                                children: [
+                                  Image.file(
+                                    _selectedImage!,
                                     height: 160,
                                     width: double.infinity,
-                                    color: Colors.grey[300],
-                                    child: const Icon(Icons.broken_image, size: 50),
-                                  );
-                                },
+                                    fit: BoxFit.cover,
+                                  ),
+                                  if (_isUploadingImage)
+                                    Container(
+                                      height: 160,
+                                      width: double.infinity,
+                                      color: Colors.black54,
+                                      child: const Center(
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            CircularProgressIndicator(
+                                              color: Colors.white,
+                                            ),
+                                            SizedBox(height: 8),
+                                            Text(
+                                              'Uploading...',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
                             )
                           : Container(
@@ -192,11 +293,15 @@ class _AddItemScreenState extends State<AddItemScreen> {
                                 border: Border.all(color: Colors.grey.shade300),
                               ),
                               child: const Center(
-                                child: Icon(Icons.add_a_photo, size: 50, color: Colors.grey),
+                                child: Icon(
+                                  Icons.add_a_photo,
+                                  size: 50,
+                                  color: Colors.grey,
+                                ),
                               ),
                             ),
                     ),
-                    if (_selectedImage != null)
+                    if (_selectedImage != null && !_isUploadingImage)
                       Positioned(
                         top: 8,
                         right: 8,
@@ -208,16 +313,44 @@ class _AddItemScreenState extends State<AddItemScreen> {
                           ),
                         ),
                       ),
+                    if (_uploadedImageUrl != null && !_isUploadingImage)
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.check_circle, color: Colors.white, size: 16),
+                              SizedBox(width: 4),
+                              Text(
+                                'Uploaded',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 16),
-
                 _buildTextField(_nameController, "Item Name", Icons.label),
                 const SizedBox(height: 12),
                 _buildTextField(_priceController, "Price", Icons.attach_money,
                     inputType: TextInputType.number),
                 const SizedBox(height: 12),
-
                 _buildDropdown(
                   label: "Category",
                   icon: Icons.category,
@@ -228,7 +361,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                     'Stationery',
                     'Books',
                     'Electronics',
-                    'Clothing'
+                    'Clothing',
                   ],
                   onChanged: (v) {
                     setState(() {
@@ -238,7 +371,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
                   },
                 ),
                 const SizedBox(height: 12),
-
                 _buildDropdown(
                   label: "Condition",
                   icon: Icons.inventory_2_outlined,
@@ -247,7 +379,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
                   onChanged: (v) => setState(() => selectedCondition = v!),
                 ),
                 const SizedBox(height: 12),
-
                 _buildDropdown(
                   label: "Purpose",
                   icon: Icons.swap_horiz,
@@ -256,7 +387,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
                   onChanged: (v) => setState(() => selectedPurpose = v!),
                 ),
                 const SizedBox(height: 12),
-
                 Row(
                   children: [
                     Expanded(
@@ -269,15 +399,11 @@ class _AddItemScreenState extends State<AddItemScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-
-                _buildTextField(
-                    _locationController, "Location (optional)", Icons.location_on_outlined),
+                _buildTextField(_locationController, "Location (optional)", Icons.location_on_outlined),
                 const SizedBox(height: 12),
-                _buildTextField(
-                    _notesController, "Notes (optional)", Icons.notes,
+                _buildTextField(_notesController, "Notes (optional)", Icons.notes,
                     maxLines: 2),
                 const SizedBox(height: 12),
-
                 if (selectedCategory == 'Grocery')
                   Center(
                     child: ElevatedButton.icon(
@@ -294,7 +420,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
                     ),
                   ),
                 const SizedBox(height: 20),
-
                 Center(
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.teal)
@@ -319,8 +444,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label,
-      IconData icon,
+  Widget _buildTextField(TextEditingController controller, String label, IconData icon,
       {int maxLines = 1, TextInputType inputType = TextInputType.text}) {
     return TextFormField(
       controller: controller,
