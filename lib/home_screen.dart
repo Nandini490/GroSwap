@@ -29,14 +29,14 @@ class _HomeScreenState extends State<HomeScreen> {
     'Stationery',
     'Books',
     'Electronics',
-    'Clothing'
+    'Clothing',
   ];
 
   final List<String> sortOptions = [
     'None',
     'Price: Low → High',
     'Price: High → Low',
-    'Expiry: Soonest First'
+    'Expiry: Soonest First',
   ];
 
   void _onBottomNavTap(int index) {
@@ -67,7 +67,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 controller: _searchController,
                 decoration: InputDecoration(
                   hintText: 'Search items...',
-                  prefixIcon: const Icon(Icons.search, color: Color(0xFF507B7B)),
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    color: Color(0xFF507B7B),
+                  ),
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(
@@ -96,8 +99,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         underline: const SizedBox(),
                         isExpanded: true,
                         items: categories
-                            .map((cat) => DropdownMenuItem(
-                                value: cat, child: Text(cat)))
+                            .map(
+                              (cat) => DropdownMenuItem(
+                                value: cat,
+                                child: Text(cat),
+                              ),
+                            )
                             .toList(),
                         onChanged: (value) {
                           if (value != null) {
@@ -124,8 +131,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         underline: const SizedBox(),
                         isExpanded: true,
                         items: sortOptions
-                            .map((sort) => DropdownMenuItem(
-                                value: sort, child: Text(sort)))
+                            .map(
+                              (sort) => DropdownMenuItem(
+                                value: sort,
+                                child: Text(sort),
+                              ),
+                            )
                             .toList(),
                         onChanged: (value) {
                           if (value != null) {
@@ -146,25 +157,33 @@ class _HomeScreenState extends State<HomeScreen> {
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) {
                     return const Center(
-                        child: CircularProgressIndicator(
-                            color: Color(0xFF507B7B)));
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF507B7B),
+                      ),
+                    );
                   }
 
                   final items = snapshot.data!.docs.where((doc) {
-                    final name = (doc.data()['name'] ?? '').toString().toLowerCase();
+                    final name = (doc.data()['name'] ?? '')
+                        .toString()
+                        .toLowerCase();
                     final search = _searchController.text.toLowerCase();
                     return name.contains(search);
                   }).toList();
 
                   // Sorting
                   if (selectedSort == 'Price: Low → High') {
-                    items.sort((a, b) =>
-                        ((a.data()['price'] ?? 0) as num)
-                            .compareTo((b.data()['price'] ?? 0) as num));
+                    items.sort(
+                      (a, b) => ((a.data()['price'] ?? 0) as num).compareTo(
+                        (b.data()['price'] ?? 0) as num,
+                      ),
+                    );
                   } else if (selectedSort == 'Price: High → Low') {
-                    items.sort((a, b) =>
-                        ((b.data()['price'] ?? 0) as num)
-                            .compareTo((a.data()['price'] ?? 0) as num));
+                    items.sort(
+                      (a, b) => ((b.data()['price'] ?? 0) as num).compareTo(
+                        (a.data()['price'] ?? 0) as num,
+                      ),
+                    );
                   } else if (selectedSort == 'Expiry: Soonest First' &&
                       selectedCategory == 'Grocery') {
                     items.sort((a, b) {
@@ -180,8 +199,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   if (items.isEmpty) {
                     return const Center(
-                        child: Text('No items found',
-                            style: TextStyle(color: Colors.grey)));
+                      child: Text(
+                        'No items found',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    );
                   }
 
                   return ListView.builder(
@@ -192,13 +214,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       final itemId = item.id;
 
                       final name = data['name'] ?? 'Unnamed';
-                      final type = (data['type'] ?? data['category'] ?? 'No Type').toString();
+                      final type =
+                          (data['type'] ?? data['category'] ?? 'No Type')
+                              .toString();
                       final price = data['price'] ?? 0;
                       final category = data['category'] ?? '';
 
                       // ✅ Image handling fix
                       final rawUrl = data['imageUrl'];
-                      final imageUrl = (rawUrl != null && rawUrl.toString().isNotEmpty)
+                      final imageUrl =
+                          (rawUrl != null && rawUrl.toString().isNotEmpty)
                           ? rawUrl.toString()
                           : '';
 
@@ -211,13 +236,16 @@ class _HomeScreenState extends State<HomeScreen> {
                             .where('itemId', isEqualTo: itemId)
                             .snapshots(),
                         builder: (context, wishlistSnapshot) {
-                          final isFavorited = wishlistSnapshot.hasData &&
+                          final isFavorited =
+                              wishlistSnapshot.hasData &&
                               wishlistSnapshot.data!.docs.isNotEmpty;
 
                           return Card(
                             color: Colors.white,
                             margin: const EdgeInsets.symmetric(
-                                vertical: 6, horizontal: 12),
+                              vertical: 6,
+                              horizontal: 12,
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
@@ -232,14 +260,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                         width: 50,
                                         height: 50,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) {
-                                          return Image.asset(
-                                            'assets/images/placeholder.jpg',
-                                            width: 50,
-                                            height: 50,
-                                            fit: BoxFit.cover,
-                                          );
-                                        },
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                              return Image.asset(
+                                                'assets/images/placeholder.jpg',
+                                                width: 50,
+                                                height: 50,
+                                                fit: BoxFit.cover,
+                                              );
+                                            },
                                       )
                                     : Image.asset(
                                         'assets/images/placeholder.jpg',
@@ -251,61 +280,187 @@ class _HomeScreenState extends State<HomeScreen> {
                               title: Text(
                                 name,
                                 style: const TextStyle(
-                                    color: Color(0xFF3A5F5F),
-                                    fontWeight: FontWeight.bold),
+                                  color: Color(0xFF3A5F5F),
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     '$type • ₹$price',
-                                    style: const TextStyle(color: Colors.grey, fontSize: 13),
+                                    style: const TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 13,
+                                    ),
                                   ),
-                                  if (category == 'Grocery' && expiryDate != null)
-                                    Builder(builder: (context) {
-                                      final expiry = (expiryDate as Timestamp).toDate();
-                                      final daysLeft = expiry.difference(DateTime.now()).inDays;
+                                  if (category == 'Grocery' &&
+                                      expiryDate != null)
+                                    Builder(
+                                      builder: (context) {
+                                        final expiry = (expiryDate as Timestamp)
+                                            .toDate();
+                                        final daysLeft = expiry
+                                            .difference(DateTime.now())
+                                            .inDays;
 
-                                      String expiryText;
-                                      Color expiryColor;
+                                        String expiryText;
+                                        Color expiryColor;
 
-                                      if (daysLeft < 0) {
-                                        expiryText = 'Expired!';
-                                        expiryColor = Colors.red;
-                                      } else if (daysLeft == 0) {
-                                        expiryText = 'Expires today!';
-                                        expiryColor = Colors.orange;
-                                      } else {
-                                        expiryText = 'Expires in $daysLeft days';
-                                        expiryColor = daysLeft <= 3 ? Colors.orange : Colors.green;
-                                      }
+                                        if (daysLeft < 0) {
+                                          expiryText = 'Expired!';
+                                          expiryColor = Colors.red;
+                                        } else if (daysLeft == 0) {
+                                          expiryText = 'Expires today!';
+                                          expiryColor = Colors.orange;
+                                        } else {
+                                          expiryText =
+                                              'Expires in $daysLeft days';
+                                          expiryColor = daysLeft <= 3
+                                              ? Colors.orange
+                                              : Colors.green;
+                                        }
 
-                                      return Text(
-                                        expiryText,
-                                        style: TextStyle(color: expiryColor, fontWeight: FontWeight.w500),
-                                      );
-                                    }),
+                                        return Text(
+                                          expiryText,
+                                          style: TextStyle(
+                                            color: expiryColor,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        );
+                                      },
+                                    ),
                                 ],
                               ),
-                              trailing: IconButton(
-                                icon: Icon(
-                                  isFavorited ? Icons.favorite : Icons.favorite_border,
-                                  color: const Color(0xFF507B7B),
-                                ),
-                                onPressed: () async {
-                                  final wishlistRef = FirebaseFirestore.instance.collection('wishlist');
-                                  if (isFavorited) {
-                                    for (var doc in wishlistSnapshot.data!.docs) {
-                                      await wishlistRef.doc(doc.id).delete();
-                                    }
-                                  } else {
-                                    await wishlistRef.add({
-                                      'userId': userId,
-                                      'itemId': itemId,
-                                      'timestamp': FieldValue.serverTimestamp(),
-                                    });
-                                  }
-                                },
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(
+                                      isFavorited
+                                          ? Icons.favorite
+                                          : Icons.favorite_border,
+                                      color: const Color(0xFF507B7B),
+                                    ),
+                                    onPressed: () async {
+                                      try {
+                                        final wishlistRef = FirebaseFirestore
+                                            .instance
+                                            .collection('wishlist');
+
+                                        // fresh query to find existing wishlist docs for this user+item
+                                        final existing = await wishlistRef
+                                            .where('userId', isEqualTo: userId)
+                                            .where('itemId', isEqualTo: itemId)
+                                            .get();
+
+                                        if (existing.docs.isNotEmpty) {
+                                          final batch = FirebaseFirestore
+                                              .instance
+                                              .batch();
+                                          for (var doc in existing.docs)
+                                            batch.delete(doc.reference);
+                                          await batch.commit();
+                                          if (mounted)
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  'Removed from wishlist',
+                                                ),
+                                              ),
+                                            );
+                                        } else {
+                                          await wishlistRef.add({
+                                            'userId': userId,
+                                            'itemId': itemId,
+                                            'timestamp':
+                                                FieldValue.serverTimestamp(),
+                                          });
+                                          if (mounted)
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  'Added to wishlist',
+                                                ),
+                                              ),
+                                            );
+                                        }
+                                      } catch (e) {
+                                        if (mounted)
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'Wishlist error: $e',
+                                              ),
+                                            ),
+                                          );
+                                      }
+                                    },
+                                  ),
+                                  const SizedBox(width: 8),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.add_shopping_cart,
+                                      color: Color(0xFF507B7B),
+                                    ),
+                                    tooltip: 'Add to cart',
+                                    onPressed: () async {
+                                      try {
+                                        final cartRef = FirebaseFirestore
+                                            .instance
+                                            .collection('cart');
+
+                                        final existingCart = await cartRef
+                                            .where('userId', isEqualTo: userId)
+                                            .where('itemId', isEqualTo: itemId)
+                                            .get();
+
+                                        if (existingCart.docs.isNotEmpty) {
+                                          if (mounted)
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  'Item already in cart',
+                                                ),
+                                              ),
+                                            );
+                                        } else {
+                                          await cartRef.add({
+                                            'userId': userId,
+                                            'itemId': itemId,
+                                            'timestamp':
+                                                FieldValue.serverTimestamp(),
+                                          });
+                                          if (mounted)
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text('Added to cart'),
+                                              ),
+                                            );
+                                        }
+                                      } catch (e) {
+                                        if (mounted)
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text('Cart error: $e'),
+                                            ),
+                                          );
+                                      }
+                                    },
+                                  ),
+                                ],
                               ),
                             ),
                           );
@@ -331,10 +486,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screens = [
-      _buildHomeContent(),
-      ..._otherTabs,
-    ];
+    final screens = [_buildHomeContent(), ..._otherTabs];
 
     return Scaffold(
       appBar: AppBar(
@@ -348,23 +500,24 @@ class _HomeScreenState extends State<HomeScreen> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const WishlistScreen()),
+                      MaterialPageRoute(
+                        builder: (context) => const WishlistScreen(),
+                      ),
                     );
                   },
                 ),
               ]
             : null,
       ),
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: screens,
-      ),
+      body: IndexedStack(index: _selectedIndex, children: screens),
       floatingActionButton: _selectedIndex == 0
           ? FloatingActionButton(
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const AddItemScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => const AddItemScreen(),
+                  ),
                 );
               },
               backgroundColor: const Color(0xFF507B7B),
@@ -382,7 +535,10 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.message), label: 'Messages'),
           BottomNavigationBarItem(icon: Icon(Icons.list), label: 'MyList'),
-          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Cart'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.shopping_cart),
+            label: 'Cart',
+          ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
