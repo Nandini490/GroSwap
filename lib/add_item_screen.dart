@@ -35,7 +35,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
   // Cloudinary setup
   final cloudinary = CloudinaryPublic(
     'dsq93kxoa', // Your Cloudinary cloud name
-    'resourcely_items', // Your upload preset
+    'resourcely_unsigned', // Your upload preset
     cache: false,
   );
 

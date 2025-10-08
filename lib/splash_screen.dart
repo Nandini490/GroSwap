@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'main.dart'; // For AuthGate navigation
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -18,17 +17,18 @@ class _SplashScreenState extends State<SplashScreen>
     super.initState();
 
     // Animation setup
-    _controller =
-        AnimationController(vsync: this, duration: const Duration(seconds: 2));
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    );
     _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(_controller);
     _controller.forward();
 
-    // Navigate to AuthGate after 3 seconds
+    // Navigate to the AuthGate (registered as a named route) after 3 seconds.
+    // Use a mounted check to avoid calling Navigator after dispose.
     Future.delayed(const Duration(seconds: 3), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const AuthGate()),
-      );
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/auth');
     });
   }
 

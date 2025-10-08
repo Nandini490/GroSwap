@@ -10,9 +10,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   runApp(const MyApp());
 }
@@ -61,6 +59,9 @@ class MyApp extends StatelessWidget {
       ),
 
       // Show SplashScreen first
+      // Register named routes so SplashScreen can navigate without importing main.dart
+      routes: {'/auth': (context) => const AuthGate()},
+
       home: const SplashScreen(),
     );
   }
