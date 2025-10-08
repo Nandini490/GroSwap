@@ -12,6 +12,18 @@ class MyListScreen extends StatefulWidget {
 class _MyListScreenState extends State<MyListScreen> {
   final userId = FirebaseAuth.instance.currentUser!.uid;
 
+  Future<void> _removeFromMyList(String mylistDocId) async {
+    await FirebaseFirestore.instance
+        .collection('mylist')
+        .doc(mylistDocId)
+        .delete();
+    if (mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Removed from My List')));
+    }
+  }
+
   void _deleteItem(String itemId) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -44,22 +56,22 @@ class _MyListScreenState extends State<MyListScreen> {
   }
 
   void _editItem(String itemId, Map<String, dynamic> currentData) async {
-    final TextEditingController nameController =
-        TextEditingController(text: currentData['name']);
-    final TextEditingController priceController =
-        TextEditingController(text: currentData['price'].toString());
-    final TextEditingController typeController =
-        TextEditingController(text: currentData['type'] ?? currentData['category'] ?? '');
+    final TextEditingController nameController = TextEditingController(
+      text: currentData['name'],
+    );
+    final TextEditingController priceController = TextEditingController(
+      text: currentData['price'].toString(),
+    );
+    final TextEditingController typeController = TextEditingController(
+      text: currentData['type'] ?? currentData['category'] ?? '',
+    );
 
     await showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           backgroundColor: Colors.white,
-          title: const Text(
-            "Edit Item",
-            style: TextStyle(color: Colors.black),
-          ),
+          title: const Text("Edit Item", style: TextStyle(color: Colors.black)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -75,7 +87,9 @@ class _MyListScreenState extends State<MyListScreen> {
                 ),
                 TextField(
                   controller: typeController,
-                  decoration: const InputDecoration(labelText: "Type / Category"),
+                  decoration: const InputDecoration(
+                    labelText: "Type / Category",
+                  ),
                 ),
               ],
             ),
@@ -91,10 +105,10 @@ class _MyListScreenState extends State<MyListScreen> {
                     .collection('items')
                     .doc(itemId)
                     .update({
-                  'name': nameController.text,
-                  'price': double.tryParse(priceController.text) ?? 0,
-                  'type': typeController.text,
-                });
+                      'name': nameController.text,
+                      'price': double.tryParse(priceController.text) ?? 0,
+                      'type': typeController.text,
+                    });
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text("Item updated successfully")),
@@ -113,17 +127,15 @@ class _MyListScreenState extends State<MyListScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFEDF4F3),
       appBar: AppBar(
-        title: const Text(
-          'My Listings',
-          style: TextStyle(color: Colors.black),
-        ),
+        title: const Text('My List', style: TextStyle(color: Colors.black)),
         backgroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Colors.black),
         elevation: 0,
       ),
       body: StreamBuilder<QuerySnapshot>(
+        // Listen to the user's mylist entries which reference itemIds
         stream: FirebaseFirestore.instance
-            .collection('items')
+            .collection('mylist')
             .where('userId', isEqualTo: userId)
             .orderBy('timestamp', descending: true)
             .snapshots(),
@@ -134,12 +146,12 @@ class _MyListScreenState extends State<MyListScreen> {
             );
           }
 
-          final docs = snapshot.data!.docs;
+          final mylistDocs = snapshot.data!.docs;
 
-          if (docs.isEmpty) {
+          if (mylistDocs.isEmpty) {
             return const Center(
               child: Text(
-                'You haven’t listed any items yet.',
+                'You haven’t saved any items yet.',
                 style: TextStyle(color: Colors.grey, fontSize: 16),
               ),
             );
@@ -147,80 +159,184 @@ class _MyListScreenState extends State<MyListScreen> {
 
           return ListView.builder(
             padding: const EdgeInsets.all(12),
-            itemCount: docs.length,
+            itemCount: mylistDocs.length,
             itemBuilder: (context, index) {
-              final doc = docs[index];
-              final data = doc.data() as Map<String, dynamic>;
-              final itemId = doc.id;
+              final myDoc = mylistDocs[index];
+              final myData = myDoc.data() as Map<String, dynamic>;
+              final itemId = myData['itemId'] as String;
 
-              final name = data['name'] ?? 'Unnamed';
-              final type = (data['type'] ?? data['category'] ?? 'No Type').toString();
-              final price = data['price'] ?? 0;
-              final quantity = data['quantity'] ?? '';
-              final unit = data['unit'] ?? '';
-              final rawUrl = data['imageUrl'];
-              final imageUrl = (rawUrl != null && rawUrl.toString().isNotEmpty)
-                  ? rawUrl.toString()
-                  : 'https://via.placeholder.com/150';
+              // For each mylist entry, fetch the corresponding item document
+              return FutureBuilder<DocumentSnapshot>(
+                future: FirebaseFirestore.instance
+                    .collection('items')
+                    .doc(itemId)
+                    .get(),
+                builder: (context, itemSnap) {
+                  if (itemSnap.connectionState == ConnectionState.waiting) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: SizedBox(
+                        height: 72,
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF507B7B),
+                          ),
+                        ),
+                      ),
+                    );
+                  }
 
-              DateTime? expiryDate;
-              if (data['expiryDate'] != null) {
-                expiryDate = (data['expiryDate'] as Timestamp).toDate();
-              }
+                  if (!itemSnap.hasData || !itemSnap.data!.exists) {
+                    // Item was removed from items collection
+                    return Container(
+                      margin: const EdgeInsets.symmetric(vertical: 8),
+                      child: Card(
+                        color: Colors.white,
+                        elevation: 3,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ListTile(
+                          title: const Text(
+                            'Item no longer available',
+                            style: TextStyle(color: Colors.black),
+                          ),
+                          subtitle: const Text(
+                            'This item was removed by the owner.',
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => _removeFromMyList(myDoc.id),
+                          ),
+                        ),
+                      ),
+                    );
+                  }
 
-              return Container(
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                child: Card(
-                  color: Colors.white,
-                  elevation: 3,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    leading: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        imageUrl,
-                        width: 55,
-                        height: 55,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          width: 55,
-                          height: 55,
-                          color: Colors.grey[300],
-                          child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                  final itemDoc = itemSnap.data!;
+                  final data = itemDoc.data() as Map<String, dynamic>;
+
+                  final name = data['name'] ?? 'Unnamed';
+                  final type = (data['type'] ?? data['category'] ?? 'No Type')
+                      .toString();
+                  final price = data['price'] ?? 0;
+                  final quantity = data['quantity'] ?? '';
+                  final unit = data['unit'] ?? '';
+                  final rawUrl = data['imageUrl'];
+                  final imageUrl =
+                      (rawUrl != null && rawUrl.toString().isNotEmpty)
+                      ? rawUrl.toString()
+                      : 'https://via.placeholder.com/150';
+
+                  DateTime? expiryDate;
+                  if (data['expiryDate'] != null) {
+                    expiryDate = (data['expiryDate'] as Timestamp).toDate();
+                  }
+
+                  final isOwner = (data['userId'] ?? '') == userId;
+
+                  return Container(
+                    margin: const EdgeInsets.symmetric(vertical: 8),
+                    child: Card(
+                      color: Colors.white,
+                      elevation: 3,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            imageUrl,
+                            width: 55,
+                            height: 55,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                Container(
+                                  width: 55,
+                                  height: 55,
+                                  color: Colors.grey[300],
+                                  child: const Icon(
+                                    Icons.image_not_supported,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                          ),
+                        ),
+                        title: Text(
+                          name,
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '$type • ₹$price',
+                              style: const TextStyle(color: Colors.grey),
+                            ),
+                            if (quantity.toString().isNotEmpty ||
+                                unit.toString().isNotEmpty)
+                              Text(
+                                'Quantity: $quantity $unit',
+                                style: const TextStyle(color: Colors.grey),
+                              ),
+                            if (expiryDate != null)
+                              Text(
+                                'Expiry: ${expiryDate.toLocal().toString().split(' ')[0]}',
+                                style: const TextStyle(color: Colors.redAccent),
+                              ),
+                          ],
+                        ),
+                        trailing: PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert, color: Colors.grey),
+                          onSelected: (value) async {
+                            if (value == 'remove') {
+                              await _removeFromMyList(myDoc.id);
+                            } else if (value == 'edit' && isOwner) {
+                              _editItem(itemDoc.id, data);
+                            } else if (value == 'delete' && isOwner) {
+                              _deleteItem(itemDoc.id);
+                              // also remove any mylist entries referencing this item
+                              final batch = FirebaseFirestore.instance.batch();
+                              final mylistQuery = await FirebaseFirestore
+                                  .instance
+                                  .collection('mylist')
+                                  .where('itemId', isEqualTo: itemDoc.id)
+                                  .get();
+                              for (var d in mylistQuery.docs) {
+                                batch.delete(d.reference);
+                              }
+                              await batch.commit();
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(
+                              value: 'remove',
+                              child: Text('Remove'),
+                            ),
+                            if (isOwner)
+                              const PopupMenuItem(
+                                value: 'edit',
+                                child: Text('Edit'),
+                              ),
+                            if (isOwner)
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: Text('Delete'),
+                              ),
+                          ],
                         ),
                       ),
                     ),
-                    title: Text(name, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w600)),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('$type • ₹$price', style: const TextStyle(color: Colors.grey)),
-                        if (quantity.isNotEmpty || unit.isNotEmpty)
-                          Text('Quantity: $quantity $unit', style: const TextStyle(color: Colors.grey)),
-                        if (expiryDate != null)
-                          Text('Expiry: ${expiryDate.toLocal().toString().split(' ')[0]}',
-                              style: const TextStyle(color: Colors.redAccent)),
-                      ],
-                    ),
-                    trailing: PopupMenuButton<String>(
-                      icon: const Icon(Icons.more_vert, color: Colors.grey),
-                      onSelected: (value) {
-                        if (value == 'edit') {
-                          _editItem(itemId, data);
-                        } else if (value == 'delete') {
-                          _deleteItem(itemId);
-                        }
-                      },
-                      itemBuilder: (context) => const [
-                        PopupMenuItem(value: 'edit', child: Text('Edit')),
-                        PopupMenuItem(value: 'delete', child: Text('Delete')),
-                      ],
-                    ),
-                  ),
-                ),
+                  );
+                },
               );
             },
           );
