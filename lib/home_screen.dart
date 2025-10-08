@@ -52,10 +52,6 @@ class _HomeScreenState extends State<HomeScreen> {
         .collection('items')
         .orderBy('timestamp', descending: true);
 
-    if (selectedCategory != 'All') {
-      itemsQuery = itemsQuery.where('category', isEqualTo: selectedCategory);
-    }
-
     return SafeArea(
       child: Container(
         color: const Color(0xFFEDF4F3),
@@ -164,11 +160,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   }
 
                   final items = snapshot.data!.docs.where((doc) {
-                    final name = (doc.data()['name'] ?? '')
-                        .toString()
-                        .toLowerCase();
+                    final data = doc.data();
+                    final name = (data['name'] ?? '').toString().toLowerCase();
                     final search = _searchController.text.toLowerCase();
-                    return name.contains(search);
+
+                    // Match against either 'category' or 'type' (case-insensitive)
+                    final itemCategory =
+                        (data['category'] ?? data['type'] ?? '')
+                            .toString()
+                            .toLowerCase();
+                    final categoryMatch =
+                        selectedCategory == 'All' ||
+                        itemCategory == selectedCategory.toLowerCase();
+
+                    return name.contains(search) && categoryMatch;
                   }).toList();
 
                   // Sorting
@@ -185,7 +190,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     );
                   } else if (selectedSort == 'Expiry: Soonest First' &&
-                      selectedCategory == 'Grocery') {
+                      selectedCategory.toLowerCase() == 'grocery') {
                     items.sort((a, b) {
                       final expiryA = a.data()['expiryDate'] != null
                           ? (a.data()['expiryDate'] as Timestamp).toDate()
@@ -294,7 +299,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                       fontSize: 13,
                                     ),
                                   ),
-                                  if (category == 'Grocery' &&
+                                  if ((category ?? '')
+                                              .toString()
+                                              .toLowerCase() ==
+                                          'grocery' &&
                                       expiryDate != null)
                                     Builder(
                                       builder: (context) {

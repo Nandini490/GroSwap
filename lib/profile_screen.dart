@@ -206,7 +206,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         elevation: 0,
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: Colors.teal))
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF507B7B)))
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Form(
@@ -278,7 +278,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             onPressed: _getCurrentLocation,
                             icon: const Icon(Icons.my_location),
                             label: const Text("Auto Location"),
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+                            style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF507B7B)),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -287,7 +287,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             onPressed: _pickOnMap,
                             icon: const Icon(Icons.map),
                             label: const Text("Pick on Map"),
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+                            style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF507B7B)),
                           ),
                         ),
                       ],
@@ -296,7 +296,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ElevatedButton(
                       onPressed: _saveProfile,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.teal,
+                        backgroundColor: Color(0xFF507B7B),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       child: const Text("Save Profile"),
@@ -307,7 +307,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       icon: const Icon(Icons.logout),
                       label: const Text("Logout"),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.redAccent,
+                        backgroundColor: const Color.fromARGB(255, 236, 152, 152),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                     ),
@@ -379,7 +379,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
         elevation: 0,
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: Colors.teal))
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF507B7B)))
           : GoogleMap(
               initialCameraPosition: CameraPosition(target: _initialLocation, zoom: 15),
               onTap: _onMapTap,
