@@ -164,6 +164,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     final name = (data['name'] ?? '').toString().toLowerCase();
                     final search = _searchController.text.toLowerCase();
 
+                    // Exclude items posted by the current user
+                    if ((data['userId'] ?? '') == userId) return false;
+
                     // Match against either 'category' or 'type' (case-insensitive)
                     final itemCategory =
                         (data['category'] ?? data['type'] ?? '')
