@@ -299,8 +299,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                   Text(
                                     '$type • ₹$price',
                                     style: const TextStyle(
-                                      color: Colors.grey,
+                                      color: Color(0xFF6B6B6B),
                                       fontSize: 13,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                   Row(

@@ -245,7 +245,11 @@ class _WishlistScreenState extends State<WishlistScreen> {
                       ),
                       subtitle: Text(
                         '$type • ₹$price',
-                        style: const TextStyle(color: Colors.grey),
+                        style: const TextStyle(
+                          color: Color(0xFF6B6B6B),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       trailing: IconButton(
                         icon: const Icon(Icons.delete, color: Colors.red),

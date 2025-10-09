@@ -279,7 +279,11 @@ class _MyListScreenState extends State<MyListScreen> {
                           children: [
                             Text(
                               '$type • ₹$price',
-                              style: const TextStyle(color: Colors.grey),
+                              style: const TextStyle(
+                                color: Color(0xFF6B6B6B),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                             if (quantity.toString().isNotEmpty ||
                                 unit.toString().isNotEmpty)
