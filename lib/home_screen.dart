@@ -211,7 +211,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   }
 
-                  return ListView.builder(
+                  return GridView.builder(
+                    padding: const EdgeInsets.all(12),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 1.0, // square cells
+                        ),
                     itemCount: items.length,
                     itemBuilder: (context, index) {
                       final item = items[index];
@@ -223,7 +231,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           (data['type'] ?? data['category'] ?? 'No Type')
                               .toString();
                       final price = data['price'] ?? 0;
-                      final category = data['category'] ?? '';
 
                       // ✅ Image handling fix
                       final rawUrl = data['imageUrl'];
@@ -231,8 +238,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           (rawUrl != null && rawUrl.toString().isNotEmpty)
                           ? rawUrl.toString()
                           : '';
-
-                      final expiryDate = data['expiryDate'];
 
                       return StreamBuilder<QuerySnapshot>(
                         stream: FirebaseFirestore.instance
@@ -247,51 +252,50 @@ class _HomeScreenState extends State<HomeScreen> {
 
                           return Card(
                             color: Colors.white,
-                            margin: const EdgeInsets.symmetric(
-                              vertical: 6,
-                              horizontal: 12,
-                            ),
+                            margin: EdgeInsets.zero,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
                             elevation: 3,
-                            child: ListTile(
-                              // ✅ Fixed image loader
-                              leading: ClipRRect(
-                                borderRadius: BorderRadius.circular(6),
-                                child: (imageUrl.isNotEmpty)
-                                    ? Image.network(
-                                        imageUrl,
-                                        width: 50,
-                                        height: 50,
-                                        fit: BoxFit.cover,
-                                        errorBuilder:
-                                            (context, error, stackTrace) {
-                                              return Image.asset(
-                                                'assets/images/placeholder.jpg',
-                                                width: 50,
-                                                height: 50,
-                                                fit: BoxFit.cover,
-                                              );
-                                            },
-                                      )
-                                    : Image.asset(
-                                        'assets/images/placeholder.jpg',
-                                        width: 50,
-                                        height: 50,
-                                        fit: BoxFit.cover,
-                                      ),
-                              ),
-                              title: Text(
-                                name,
-                                style: const TextStyle(
-                                  color: Color(0xFF3A5F5F),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              subtitle: Column(
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  Expanded(
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(6),
+                                      child: (imageUrl.isNotEmpty)
+                                          ? Image.network(
+                                              imageUrl,
+                                              width: double.infinity,
+                                              height: double.infinity,
+                                              fit: BoxFit.cover,
+                                              errorBuilder:
+                                                  (context, error, stackTrace) {
+                                                    return Image.asset(
+                                                      'assets/images/placeholder.jpg',
+                                                      fit: BoxFit.cover,
+                                                    );
+                                                  },
+                                            )
+                                          : Image.asset(
+                                              'assets/images/placeholder.jpg',
+                                              fit: BoxFit.cover,
+                                            ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Color(0xFF3A5F5F),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
                                   Text(
                                     '$type • ₹$price',
                                     style: const TextStyle(
@@ -299,174 +303,152 @@ class _HomeScreenState extends State<HomeScreen> {
                                       fontSize: 13,
                                     ),
                                   ),
-                                  if ((category ?? '')
-                                              .toString()
-                                              .toLowerCase() ==
-                                          'grocery' &&
-                                      expiryDate != null)
-                                    Builder(
-                                      builder: (context) {
-                                        final expiry = (expiryDate as Timestamp)
-                                            .toDate();
-                                        final daysLeft = expiry
-                                            .difference(DateTime.now())
-                                            .inDays;
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    mainAxisSize: MainAxisSize.max,
+                                    children: [
+                                      IconButton(
+                                        icon: Icon(
+                                          isFavorited
+                                              ? Icons.favorite
+                                              : Icons.favorite_border,
+                                          color: const Color(0xFF507B7B),
+                                          size: 20,
+                                        ),
+                                        onPressed: () async {
+                                          try {
+                                            final wishlistRef =
+                                                FirebaseFirestore.instance
+                                                    .collection('wishlist');
 
-                                        String expiryText;
-                                        Color expiryColor;
+                                            final existing = await wishlistRef
+                                                .where(
+                                                  'userId',
+                                                  isEqualTo: userId,
+                                                )
+                                                .where(
+                                                  'itemId',
+                                                  isEqualTo: itemId,
+                                                )
+                                                .get();
 
-                                        if (daysLeft < 0) {
-                                          expiryText = 'Expired!';
-                                          expiryColor = Colors.red;
-                                        } else if (daysLeft == 0) {
-                                          expiryText = 'Expires today!';
-                                          expiryColor = Colors.orange;
-                                        } else {
-                                          expiryText =
-                                              'Expires in $daysLeft days';
-                                          expiryColor = daysLeft <= 3
-                                              ? Colors.orange
-                                              : Colors.green;
-                                        }
-
-                                        return Text(
-                                          expiryText,
-                                          style: TextStyle(
-                                            color: expiryColor,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                ],
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: Icon(
-                                      isFavorited
-                                          ? Icons.favorite
-                                          : Icons.favorite_border,
-                                      color: const Color(0xFF507B7B),
-                                    ),
-                                    onPressed: () async {
-                                      try {
-                                        final wishlistRef = FirebaseFirestore
-                                            .instance
-                                            .collection('wishlist');
-
-                                        // fresh query to find existing wishlist docs for this user+item
-                                        final existing = await wishlistRef
-                                            .where('userId', isEqualTo: userId)
-                                            .where('itemId', isEqualTo: itemId)
-                                            .get();
-
-                                        if (existing.docs.isNotEmpty) {
-                                          final batch = FirebaseFirestore
-                                              .instance
-                                              .batch();
-                                          for (var doc in existing.docs)
-                                            batch.delete(doc.reference);
-                                          await batch.commit();
-                                          if (mounted)
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                  'Removed from wishlist',
+                                            if (existing.docs.isNotEmpty) {
+                                              final batch = FirebaseFirestore
+                                                  .instance
+                                                  .batch();
+                                              for (var doc in existing.docs)
+                                                batch.delete(doc.reference);
+                                              await batch.commit();
+                                              if (mounted)
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text(
+                                                      'Removed from wishlist',
+                                                    ),
+                                                  ),
+                                                );
+                                            } else {
+                                              await wishlistRef.add({
+                                                'userId': userId,
+                                                'itemId': itemId,
+                                                'timestamp':
+                                                    FieldValue.serverTimestamp(),
+                                              });
+                                              if (mounted)
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text(
+                                                      'Added to wishlist',
+                                                    ),
+                                                  ),
+                                                );
+                                            }
+                                          } catch (e) {
+                                            if (mounted)
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                    'Wishlist error: $e',
+                                                  ),
                                                 ),
-                                              ),
-                                            );
-                                        } else {
-                                          await wishlistRef.add({
-                                            'userId': userId,
-                                            'itemId': itemId,
-                                            'timestamp':
-                                                FieldValue.serverTimestamp(),
-                                          });
-                                          if (mounted)
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                  'Added to wishlist',
-                                                ),
-                                              ),
-                                            );
-                                        }
-                                      } catch (e) {
-                                        if (mounted)
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                'Wishlist error: $e',
-                                              ),
-                                            ),
-                                          );
-                                      }
-                                    },
-                                  ),
-                                  const SizedBox(width: 8),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.add_shopping_cart,
-                                      color: Color(0xFF507B7B),
-                                    ),
-                                    tooltip: 'Add to cart',
-                                    onPressed: () async {
-                                      try {
-                                        final cartRef = FirebaseFirestore
-                                            .instance
-                                            .collection('cart');
+                                              );
+                                          }
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.add_shopping_cart,
+                                          color: Color(0xFF507B7B),
+                                          size: 20,
+                                        ),
+                                        tooltip: 'Add to cart',
+                                        onPressed: () async {
+                                          try {
+                                            final cartRef = FirebaseFirestore
+                                                .instance
+                                                .collection('cart');
 
-                                        final existingCart = await cartRef
-                                            .where('userId', isEqualTo: userId)
-                                            .where('itemId', isEqualTo: itemId)
-                                            .get();
+                                            final existingCart = await cartRef
+                                                .where(
+                                                  'userId',
+                                                  isEqualTo: userId,
+                                                )
+                                                .where(
+                                                  'itemId',
+                                                  isEqualTo: itemId,
+                                                )
+                                                .get();
 
-                                        if (existingCart.docs.isNotEmpty) {
-                                          if (mounted)
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                  'Item already in cart',
+                                            if (existingCart.docs.isNotEmpty) {
+                                              if (mounted)
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text(
+                                                      'Item already in cart',
+                                                    ),
+                                                  ),
+                                                );
+                                            } else {
+                                              await cartRef.add({
+                                                'userId': userId,
+                                                'itemId': itemId,
+                                                'timestamp':
+                                                    FieldValue.serverTimestamp(),
+                                              });
+                                              if (mounted)
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text(
+                                                      'Added to cart',
+                                                    ),
+                                                  ),
+                                                );
+                                            }
+                                          } catch (e) {
+                                            if (mounted)
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                    'Cart error: $e',
+                                                  ),
                                                 ),
-                                              ),
-                                            );
-                                        } else {
-                                          await cartRef.add({
-                                            'userId': userId,
-                                            'itemId': itemId,
-                                            'timestamp':
-                                                FieldValue.serverTimestamp(),
-                                          });
-                                          if (mounted)
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              const SnackBar(
-                                                content: Text('Added to cart'),
-                                              ),
-                                            );
-                                        }
-                                      } catch (e) {
-                                        if (mounted)
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(
-                                              content: Text('Cart error: $e'),
-                                            ),
-                                          );
-                                      }
-                                    },
+                                              );
+                                          }
+                                        },
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
