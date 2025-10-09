@@ -15,11 +15,11 @@ class _WishlistScreenState extends State<WishlistScreen> {
     final userId = FirebaseAuth.instance.currentUser!.uid;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFEDF4F3),
       appBar: AppBar(
-        title: const Text('Wishlist', style: TextStyle(color: Colors.black)),
-        backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.black),
+        title: const Text('Wishlist', style: TextStyle(color: Colors.white)),
+        backgroundColor: const Color(0xFF507B7B),
+        iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
       ),
       body: StreamBuilder<QuerySnapshot>(
@@ -57,7 +57,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
 
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
-              child: CircularProgressIndicator(color: Colors.teal),
+              child: CircularProgressIndicator(color: Color(0xFF507B7B)),
             );
           }
 
