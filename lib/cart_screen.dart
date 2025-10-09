@@ -66,94 +66,205 @@ class CartScreen extends StatelessWidget {
             return bTs.compareTo(aTs);
           });
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: cartDocs.length,
-            itemBuilder: (context, index) {
-              final cartItem = cartDocs[index];
+          // Fetch all item documents referenced by the cart so we can compute a grand total
+          final allItemsFuture = Future.wait(
+            cartDocs.map((cartItem) {
               final itemId = cartItem['itemId'];
+              return FirebaseFirestore.instance
+                  .collection('items')
+                  .doc(itemId)
+                  .get();
+            }).toList(),
+          );
 
-              return FutureBuilder<DocumentSnapshot>(
-                future: FirebaseFirestore.instance
-                    .collection('items')
-                    .doc(itemId)
-                    .get(),
-                builder: (context, itemSnapshot) {
-                  // Guard against errors or missing documents
-                  if (itemSnapshot.hasError) return const SizedBox();
-                  if (!itemSnapshot.hasData) return const SizedBox();
+          return FutureBuilder<List<DocumentSnapshot>>(
+            future: allItemsFuture,
+            builder: (context, itemsSnap) {
+              if (itemsSnap.hasError) {
+                return Center(
+                  child: Text(
+                    'Error loading items: ${itemsSnap.error}',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                );
+              }
+              if (!itemsSnap.hasData) {
+                return const Center(
+                  child: CircularProgressIndicator(color: Color(0xFF507B7B)),
+                );
+              }
 
-                  final doc = itemSnapshot.data!;
-                  if (!doc.exists) return const SizedBox();
+              final itemsDocs = itemsSnap.data!;
 
-                  final itemData =
-                      (doc.data() as Map<String, dynamic>?) ??
-                      <String, dynamic>{};
+              // Compute grand total (each cart entry counts once)
+              double grandTotal = 0.0;
+              for (var doc in itemsDocs) {
+                if (doc.exists) {
+                  final data = (doc.data() as Map<String, dynamic>?) ?? {};
+                  final price = data['price'];
+                  if (price is num) grandTotal += price.toDouble();
+                }
+              }
 
-                  final imageUrl = (itemData['imageUrl'] ?? '').toString();
-                  final name = (itemData['name'] ?? 'Unnamed').toString();
-                  final type = (itemData['type'] ?? itemData['category'] ?? '')
-                      .toString();
-                  final price = itemData['price'] ?? 0;
+              return Column(
+                children: [
+                  Expanded(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: cartDocs.length,
+                      itemBuilder: (context, index) {
+                        final cartItem = cartDocs[index];
+                        final itemDoc = itemsDocs[index];
 
-                  return Card(
-                    color: Colors.white,
-                    elevation: 3,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    margin: const EdgeInsets.symmetric(vertical: 6),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      leading: imageUrl.isNotEmpty
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(
-                                imageUrl,
-                                width: 50,
-                                height: 50,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    const Icon(Icons.image, color: Colors.grey),
+                        if (!itemDoc.exists) {
+                          return Card(
+                            margin: const EdgeInsets.symmetric(vertical: 6),
+                            child: ListTile(
+                              title: const Text('Item no longer available'),
+                              trailing: IconButton(
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: Colors.redAccent,
+                                ),
+                                onPressed: () {
+                                  FirebaseFirestore.instance
+                                      .collection('cart')
+                                      .doc(cartItem.id)
+                                      .delete();
+                                },
                               ),
-                            )
-                          : const Icon(Icons.image, color: Colors.grey),
-                      title: Text(
-                        name,
-                        style: const TextStyle(
-                          color: Colors.black87,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      subtitle: Text(
-                        '${type.isNotEmpty ? type + ' • ' : ''}₹$price',
-                        style: const TextStyle(
-                          color: Color(0xFF6B6B6B),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.redAccent),
-                        onPressed: () {
-                          FirebaseFirestore.instance
-                              .collection('cart')
-                              .doc(cartItem.id)
-                              .delete();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Item removed from cart'),
-                              backgroundColor: Color(0xFF507B7B),
                             ),
                           );
-                        },
-                      ),
+                        }
+
+                        final itemData =
+                            (itemDoc.data() as Map<String, dynamic>?) ?? {};
+                        final imageUrl = (itemData['imageUrl'] ?? '')
+                            .toString();
+                        final name = (itemData['name'] ?? 'Unnamed').toString();
+                        final type =
+                            (itemData['type'] ?? itemData['category'] ?? '')
+                                .toString();
+                        final price = itemData['price'] ?? 0;
+
+                        return Card(
+                          color: Colors.white,
+                          elevation: 3,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          margin: const EdgeInsets.symmetric(vertical: 6),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            leading: imageUrl.isNotEmpty
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Image.network(
+                                      imageUrl,
+                                      width: 50,
+                                      height: 50,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              const Icon(
+                                                Icons.image,
+                                                color: Colors.grey,
+                                              ),
+                                    ),
+                                  )
+                                : const Icon(Icons.image, color: Colors.grey),
+                            title: Text(
+                              name,
+                              style: const TextStyle(
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '${type.isNotEmpty ? type + ' • ' : ''}₹$price',
+                              style: const TextStyle(
+                                color: Color(0xFF6B6B6B),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            trailing: IconButton(
+                              icon: const Icon(
+                                Icons.delete,
+                                color: Colors.redAccent,
+                              ),
+                              onPressed: () {
+                                FirebaseFirestore.instance
+                                    .collection('cart')
+                                    .doc(cartItem.id)
+                                    .delete();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Item removed from cart'),
+                                    backgroundColor: Color(0xFF507B7B),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
+                  ),
+
+                  // Checkout bar
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    color: Colors.white,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Total',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                            Text(
+                              '₹${grandTotal.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF507B7B),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 12,
+                            ),
+                          ),
+                          onPressed: () {
+                            // Placeholder checkout action
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Proceeding to checkout — total ₹${grandTotal.toStringAsFixed(2)}',
+                                ),
+                              ),
+                            );
+                          },
+                          child: const Text('Proceed to checkout'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               );
             },
           );
