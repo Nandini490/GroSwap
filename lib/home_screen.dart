@@ -8,6 +8,7 @@ import 'mylist_screen.dart';
 import 'cart_screen.dart';
 import 'profile_screen.dart';
 import 'wishlist_screen.dart';
+import 'requests_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -496,6 +497,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => const WishlistScreen(),
+                      ),
+                    );
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.pending_actions, color: Colors.white),
+                  tooltip: 'Requests',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const RequestsScreen(),
                       ),
                     );
                   },

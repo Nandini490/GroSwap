@@ -131,6 +131,12 @@ class CartScreen extends StatelessWidget {
                                       .collection('cart')
                                       .doc(cartItem.id)
                                       .delete();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Item removed from cart'),
+                                      backgroundColor: Color(0xFF507B7B),
+                                    ),
+                                  );
                                 },
                               ),
                             ),
@@ -191,23 +197,117 @@ class CartScreen extends StatelessWidget {
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            trailing: IconButton(
-                              icon: const Icon(
-                                Icons.delete,
-                                color: Colors.redAccent,
-                              ),
-                              onPressed: () {
-                                FirebaseFirestore.instance
-                                    .collection('cart')
-                                    .doc(cartItem.id)
-                                    .delete();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Item removed from cart'),
-                                    backgroundColor: Color(0xFF507B7B),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF507B7B),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
                                   ),
-                                );
-                              },
+                                  onPressed: () async {
+                                    try {
+                                      final user =
+                                          FirebaseAuth.instance.currentUser;
+                                      if (user == null) return;
+                                      final requesterId = user.uid;
+                                      final requesterEmail = user.email ?? '';
+                                      final ownerId = (itemData['userId'] ?? '')
+                                          .toString();
+                                      final itemId = cartItem['itemId'] ?? '';
+
+                                      if (ownerId == requesterId) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Cannot request your own item',
+                                            ),
+                                          ),
+                                        );
+                                        return;
+                                      }
+
+                                      final reqRef = FirebaseFirestore.instance
+                                          .collection('requests');
+                                      final existing = await reqRef
+                                          .where('itemId', isEqualTo: itemId)
+                                          .where(
+                                            'requesterId',
+                                            isEqualTo: requesterId,
+                                          )
+                                          .where('status', isEqualTo: 'pending')
+                                          .get();
+                                      if (existing.docs.isNotEmpty) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Request already pending',
+                                            ),
+                                          ),
+                                        );
+                                        return;
+                                      }
+
+                                      await reqRef.add({
+                                        'itemId': itemId,
+                                        'itemName': name,
+                                        'requesterId': requesterId,
+                                        'requesterEmail': requesterEmail,
+                                        'ownerId': ownerId,
+                                        'status': 'pending',
+                                        'timestamp':
+                                            FieldValue.serverTimestamp(),
+                                      });
+
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Request sent'),
+                                        ),
+                                      );
+                                    } catch (e) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Request error: $e'),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  child: const Text(
+                                    'Request',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete,
+                                    color: Colors.redAccent,
+                                  ),
+                                  onPressed: () {
+                                    FirebaseFirestore.instance
+                                        .collection('cart')
+                                        .doc(cartItem.id)
+                                        .delete();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Item removed from cart'),
+                                        backgroundColor: Color(0xFF507B7B),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
                             ),
                           ),
                         );
