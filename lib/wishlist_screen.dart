@@ -23,10 +23,10 @@ class _WishlistScreenState extends State<WishlistScreen> {
         elevation: 0,
       ),
       body: StreamBuilder<QuerySnapshot>(
+        // Avoid server-side orderBy to prevent composite-index/precondition errors.
         stream: FirebaseFirestore.instance
             .collection('wishlist')
             .where('userId', isEqualTo: userId)
-            .orderBy('timestamp', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
@@ -46,7 +46,6 @@ class _WishlistScreenState extends State<WishlistScreen> {
                       onPressed: () => FirebaseFirestore.instance
                           .collection('wishlist')
                           .where('userId', isEqualTo: userId)
-                          .orderBy('timestamp', descending: true)
                           .get(),
                       child: const Text('Retry'),
                     ),
@@ -62,7 +61,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
             );
           }
 
-          final docs = snapshot.data?.docs ?? [];
+          var docs = snapshot.data?.docs ?? [];
 
           if (docs.isEmpty) {
             return const Center(
@@ -72,6 +71,17 @@ class _WishlistScreenState extends State<WishlistScreen> {
               ),
             );
           }
+
+          // Sort client-side by timestamp descending
+          docs.sort((a, b) {
+            final aTs = a['timestamp'] is Timestamp
+                ? (a['timestamp'] as Timestamp).toDate()
+                : DateTime.fromMillisecondsSinceEpoch(0);
+            final bTs = b['timestamp'] is Timestamp
+                ? (b['timestamp'] as Timestamp).toDate()
+                : DateTime.fromMillisecondsSinceEpoch(0);
+            return bTs.compareTo(aTs);
+          });
 
           return ListView.builder(
             itemCount: docs.length,
@@ -173,18 +183,28 @@ class _WishlistScreenState extends State<WishlistScreen> {
                     );
                   }
 
-                  final item = itemSnap.data!;
+                  final doc = itemSnap.data!;
+                  if (!doc.exists) {
+                    return Container();
+                  }
+
+                  final itemData =
+                      (doc.data() as Map<String, dynamic>?) ??
+                      <String, dynamic>{};
 
                   // Image URL fallback
-                  final rawUrl = item['imageUrl'];
+                  final rawUrl = itemData['imageUrl'];
                   final imageUrl =
                       (rawUrl != null && rawUrl.toString().isNotEmpty)
                       ? rawUrl.toString()
                       : 'https://via.placeholder.com/150';
 
-                  // Type fallback
-                  final type = (item['type'] ?? item['category'] ?? 'No Type')
-                      .toString();
+                  // Type, name, price fallbacks
+                  final type =
+                      (itemData['type'] ?? itemData['category'] ?? 'No Type')
+                          .toString();
+                  final name = (itemData['name'] ?? 'Unnamed').toString();
+                  final price = itemData['price'] ?? 0;
 
                   return Card(
                     color: Colors.white,
@@ -217,14 +237,14 @@ class _WishlistScreenState extends State<WishlistScreen> {
                         ),
                       ),
                       title: Text(
-                        item['name'] ?? 'Unnamed',
+                        name,
                         style: const TextStyle(
                           color: Colors.black,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       subtitle: Text(
-                        '$type • ₹${item['price'] ?? 0}',
+                        '$type • ₹$price',
                         style: const TextStyle(color: Colors.grey),
                       ),
                       trailing: IconButton(
