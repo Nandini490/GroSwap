@@ -200,93 +200,210 @@ class CartScreen extends StatelessWidget {
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF507B7B),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 8,
-                                    ),
-                                  ),
-                                  onPressed: () async {
-                                    try {
-                                      final user =
-                                          FirebaseAuth.instance.currentUser;
-                                      if (user == null) return;
-                                      final requesterId = user.uid;
-                                      final requesterEmail = user.email ?? '';
-                                      final ownerId = (itemData['userId'] ?? '')
-                                          .toString();
-                                      final itemId = cartItem['itemId'] ?? '';
+                                // Column with Request button and live status under it
+                                Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Builder(
+                                      builder: (context) {
+                                        final itemId =
+                                            cartItem['itemId']?.toString() ??
+                                            '';
+                                        // Stream of any requests by this user for this item
+                                        final requestStream = FirebaseFirestore
+                                            .instance
+                                            .collection('requests')
+                                            .where(
+                                              'requesterId',
+                                              isEqualTo: userId,
+                                            )
+                                            .where('itemId', isEqualTo: itemId)
+                                            .snapshots();
 
-                                      if (ownerId == requesterId) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                              'Cannot request your own item',
-                                            ),
-                                          ),
+                                        return StreamBuilder<QuerySnapshot>(
+                                          stream: requestStream,
+                                          builder: (context, reqSnap) {
+                                            final hasRequest =
+                                                reqSnap.hasData &&
+                                                reqSnap.data!.docs.isNotEmpty;
+                                            if (hasRequest) {
+                                              // we will read the status below from the request doc when rendering the label
+                                            }
+
+                                            // Request button disabled if any request exists
+                                            return ElevatedButton(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: const Color(
+                                                  0xFF507B7B,
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 8,
+                                                    ),
+                                              ),
+                                              onPressed: hasRequest
+                                                  ? null
+                                                  : () async {
+                                                      try {
+                                                        final user =
+                                                            FirebaseAuth
+                                                                .instance
+                                                                .currentUser;
+                                                        if (user == null)
+                                                          return;
+                                                        final requesterId =
+                                                            user.uid;
+                                                        final requesterEmail =
+                                                            user.email ?? '';
+                                                        final ownerId =
+                                                            (itemData['userId'] ??
+                                                                    '')
+                                                                .toString();
+
+                                                        if (ownerId ==
+                                                            requesterId) {
+                                                          ScaffoldMessenger.of(
+                                                            context,
+                                                          ).showSnackBar(
+                                                            const SnackBar(
+                                                              content: Text(
+                                                                'Cannot request your own item',
+                                                              ),
+                                                            ),
+                                                          );
+                                                          return;
+                                                        }
+
+                                                        final reqRef =
+                                                            FirebaseFirestore
+                                                                .instance
+                                                                .collection(
+                                                                  'requests',
+                                                                );
+                                                        final existing =
+                                                            await reqRef
+                                                                .where(
+                                                                  'itemId',
+                                                                  isEqualTo:
+                                                                      itemId,
+                                                                )
+                                                                .where(
+                                                                  'requesterId',
+                                                                  isEqualTo:
+                                                                      requesterId,
+                                                                )
+                                                                .get();
+                                                        if (existing
+                                                            .docs
+                                                            .isNotEmpty) {
+                                                          ScaffoldMessenger.of(
+                                                            context,
+                                                          ).showSnackBar(
+                                                            const SnackBar(
+                                                              content: Text(
+                                                                'Request already exists',
+                                                              ),
+                                                            ),
+                                                          );
+                                                          return;
+                                                        }
+
+                                                        await reqRef.add({
+                                                          'itemId': itemId,
+                                                          'itemName': name,
+                                                          'requesterId':
+                                                              requesterId,
+                                                          'requesterEmail':
+                                                              requesterEmail,
+                                                          'ownerId': ownerId,
+                                                          'status': 'pending',
+                                                          'timestamp':
+                                                              FieldValue.serverTimestamp(),
+                                                        });
+
+                                                        ScaffoldMessenger.of(
+                                                          context,
+                                                        ).showSnackBar(
+                                                          const SnackBar(
+                                                            content: Text(
+                                                              'Request sent',
+                                                            ),
+                                                          ),
+                                                        );
+                                                      } catch (e) {
+                                                        ScaffoldMessenger.of(
+                                                          context,
+                                                        ).showSnackBar(
+                                                          SnackBar(
+                                                            content: Text(
+                                                              'Request error: $e',
+                                                            ),
+                                                          ),
+                                                        );
+                                                      }
+                                                    },
+                                              child: const Text(
+                                                'Request',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            );
+                                          },
                                         );
-                                        return;
-                                      }
+                                      },
+                                    ),
 
-                                      final reqRef = FirebaseFirestore.instance
-                                          .collection('requests');
-                                      final existing = await reqRef
-                                          .where('itemId', isEqualTo: itemId)
+                                    const SizedBox(height: 6),
+                                    // Status label
+                                    StreamBuilder<QuerySnapshot>(
+                                      stream: FirebaseFirestore.instance
+                                          .collection('requests')
                                           .where(
                                             'requesterId',
-                                            isEqualTo: requesterId,
+                                            isEqualTo: userId,
                                           )
-                                          .where('status', isEqualTo: 'pending')
-                                          .get();
-                                      if (existing.docs.isNotEmpty) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                              'Request already pending',
-                                            ),
+                                          .where(
+                                            'itemId',
+                                            isEqualTo:
+                                                cartItem['itemId']
+                                                    ?.toString() ??
+                                                '',
+                                          )
+                                          .snapshots(),
+                                      builder: (context, rs) {
+                                        if (!rs.hasData ||
+                                            rs.data!.docs.isEmpty)
+                                          return const SizedBox.shrink();
+                                        final r = rs.data!.docs.first;
+                                        final st = (r['status'] ?? 'pending')
+                                            .toString();
+                                        String label = '';
+                                        Color color = Colors.orange;
+                                        if (st == 'pending') {
+                                          label = '🟡 Request pending';
+                                          color = Colors.orange;
+                                        } else if (st == 'accepted') {
+                                          label = '🟢 Request accepted';
+                                          color = Colors.green;
+                                        } else if (st == 'rejected') {
+                                          label = '🔴 Request rejected';
+                                          color = Colors.red;
+                                        }
+
+                                        return Text(
+                                          label,
+                                          style: TextStyle(
+                                            color: color,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
                                           ),
                                         );
-                                        return;
-                                      }
-
-                                      await reqRef.add({
-                                        'itemId': itemId,
-                                        'itemName': name,
-                                        'requesterId': requesterId,
-                                        'requesterEmail': requesterEmail,
-                                        'ownerId': ownerId,
-                                        'status': 'pending',
-                                        'timestamp':
-                                            FieldValue.serverTimestamp(),
-                                      });
-
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('Request sent'),
-                                        ),
-                                      );
-                                    } catch (e) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text('Request error: $e'),
-                                        ),
-                                      );
-                                    }
-                                  },
-                                  child: const Text(
-                                    'Request',
-                                    style: TextStyle(color: Colors.white),
-                                  ),
+                                      },
+                                    ),
+                                  ],
                                 ),
                                 const SizedBox(width: 8),
                                 IconButton(
