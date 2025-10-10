@@ -168,6 +168,7 @@ class CartScreen extends StatelessWidget {
                             leading: imageUrl.isNotEmpty
                                 ? ClipRRect(
                                     borderRadius: BorderRadius.circular(8),
+
                                     child: Image.network(
                                       imageUrl,
                                       width: 50,
@@ -269,7 +270,7 @@ class CartScreen extends StatelessWidget {
                                                           ).showSnackBar(
                                                             const SnackBar(
                                                               content: Text(
-                                                                'Cannot request your own item',
+                                                                'Cannot order your own item',
                                                               ),
                                                             ),
                                                           );
@@ -303,7 +304,7 @@ class CartScreen extends StatelessWidget {
                                                           ).showSnackBar(
                                                             const SnackBar(
                                                               content: Text(
-                                                                'Request already exists',
+                                                                'Order already exists',
                                                               ),
                                                             ),
                                                           );
@@ -328,7 +329,7 @@ class CartScreen extends StatelessWidget {
                                                         ).showSnackBar(
                                                           const SnackBar(
                                                             content: Text(
-                                                              'Request sent',
+                                                              'Order placed',
                                                             ),
                                                           ),
                                                         );
@@ -338,14 +339,14 @@ class CartScreen extends StatelessWidget {
                                                         ).showSnackBar(
                                                           SnackBar(
                                                             content: Text(
-                                                              'Request error: $e',
+                                                              'Order error: $e',
                                                             ),
                                                           ),
                                                         );
                                                       }
                                                     },
                                               child: const Text(
-                                                'Request',
+                                                'Place Order',
                                                 style: TextStyle(
                                                   color: Colors.white,
                                                 ),
@@ -383,13 +384,13 @@ class CartScreen extends StatelessWidget {
                                         String label = '';
                                         Color color = Colors.orange;
                                         if (st == 'pending') {
-                                          label = '🟡 Request pending';
+                                          label = '🟡 Order pending';
                                           color = Colors.orange;
                                         } else if (st == 'accepted') {
-                                          label = '🟢 Request accepted';
+                                          label = '🟢 Order accepted';
                                           color = Colors.green;
                                         } else if (st == 'rejected') {
-                                          label = '🔴 Request rejected';
+                                          label = '🔴 Order rejected';
                                           color = Colors.red;
                                         }
 
