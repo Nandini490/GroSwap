@@ -31,6 +31,8 @@ dependencies:
 
   # Image picker (modern version)
   image_picker: ^0.8.7+4
+  # Open phone dialer / URLs
+  url_launcher: ^6.1.11
 
   # Location & Maps
   geolocator: ^13.0.1

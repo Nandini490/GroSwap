@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:groswap/chat_screen.dart';
 
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
@@ -162,6 +164,7 @@ class CartScreen extends StatelessWidget {
                                   : <String>[]);
 
                         final name = (itemData['name'] ?? 'Unnamed').toString();
+                        final ownerId = (itemData['userId'] ?? '').toString();
                         final type =
                             (itemData['type'] ?? itemData['category'] ?? '')
                                 .toString();
@@ -413,13 +416,145 @@ class CartScreen extends StatelessWidget {
                                           color = Colors.red;
                                         }
 
-                                        return Text(
-                                          label,
-                                          style: TextStyle(
-                                            color: color,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w600,
-                                          ),
+                                        // If accepted, show call and message actions next to the label.
+                                        return Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              label,
+                                              style: TextStyle(
+                                                color: color,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            if (st == 'accepted') ...[
+                                              const SizedBox(width: 6),
+                                              // Fetch owner details to get phone and name
+                                              FutureBuilder<DocumentSnapshot?>(
+                                                future: ownerId.isNotEmpty
+                                                    ? FirebaseFirestore.instance
+                                                          .collection('users')
+                                                          .doc(ownerId)
+                                                          .get()
+                                                    : Future.value(null),
+                                                builder: (context, ownerSnap) {
+                                                  final ownerData =
+                                                      (ownerSnap.hasData &&
+                                                          ownerSnap.data !=
+                                                              null &&
+                                                          ownerSnap
+                                                              .data!
+                                                              .exists)
+                                                      ? (ownerSnap.data!.data()
+                                                                as Map<
+                                                                  String,
+                                                                  dynamic
+                                                                >?) ??
+                                                            {}
+                                                      : <String, dynamic>{};
+                                                  final ownerPhone =
+                                                      (ownerData['phone'] ?? '')
+                                                          .toString();
+                                                  final ownerName =
+                                                      (ownerData['name'] ?? '')
+                                                          .toString();
+
+                                                  return Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      IconButton(
+                                                        icon: const Icon(
+                                                          Icons.call,
+                                                          color: Colors.green,
+                                                          size: 18,
+                                                        ),
+                                                        padding:
+                                                            EdgeInsets.zero,
+                                                        constraints:
+                                                            const BoxConstraints(),
+                                                        onPressed:
+                                                            ownerPhone
+                                                                .isNotEmpty
+                                                            ? () async {
+                                                                final uri = Uri(
+                                                                  scheme: 'tel',
+                                                                  path:
+                                                                      ownerPhone,
+                                                                );
+                                                                try {
+                                                                  if (await canLaunchUrl(
+                                                                    uri,
+                                                                  )) {
+                                                                    await launchUrl(
+                                                                      uri,
+                                                                    );
+                                                                  } else {
+                                                                    ScaffoldMessenger.of(
+                                                                      context,
+                                                                    ).showSnackBar(
+                                                                      const SnackBar(
+                                                                        content:
+                                                                            Text(
+                                                                              'Cannot open dialer',
+                                                                            ),
+                                                                      ),
+                                                                    );
+                                                                  }
+                                                                } catch (e) {
+                                                                  ScaffoldMessenger.of(
+                                                                    context,
+                                                                  ).showSnackBar(
+                                                                    SnackBar(
+                                                                      content: Text(
+                                                                        'Call error: $e',
+                                                                      ),
+                                                                    ),
+                                                                  );
+                                                                }
+                                                              }
+                                                            : null,
+                                                      ),
+                                                      const SizedBox(width: 6),
+                                                      IconButton(
+                                                        icon: const Icon(
+                                                          Icons.message,
+                                                          color: Color(
+                                                            0xFF507B7B,
+                                                          ),
+                                                          size: 18,
+                                                        ),
+                                                        padding:
+                                                            EdgeInsets.zero,
+                                                        constraints:
+                                                            const BoxConstraints(),
+                                                        onPressed:
+                                                            ownerId.isNotEmpty
+                                                            ? () {
+                                                                Navigator.push(
+                                                                  context,
+                                                                  MaterialPageRoute(
+                                                                    builder: (_) => ChatScreen(
+                                                                      otherUserId:
+                                                                          ownerId,
+                                                                      otherUserName:
+                                                                          ownerName
+                                                                              .isNotEmpty
+                                                                          ? ownerName
+                                                                          : ownerId,
+                                                                    ),
+                                                                  ),
+                                                                );
+                                                              }
+                                                            : null,
+                                                      ),
+                                                    ],
+                                                  );
+                                                },
+                                              ),
+                                            ],
+                                          ],
                                         );
                                       },
                                     ),
