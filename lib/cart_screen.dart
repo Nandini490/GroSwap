@@ -175,44 +175,28 @@ class CartScreen extends StatelessWidget {
                           ),
                           margin: const EdgeInsets.symmetric(vertical: 6),
                           child: ListTile(
+                            dense: true,
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 16,
                               vertical: 8,
                             ),
-                            leading: SizedBox(
-                              width: 120,
-                              height: 52,
-                              child: displayImages.isNotEmpty
-                                  ? ListView.separated(
-                                      scrollDirection: Axis.horizontal,
-                                      itemCount: displayImages.length > 3
-                                          ? 3
-                                          : displayImages.length,
-                                      itemBuilder: (context, i) {
-                                        final url = displayImages[i];
-                                        return ClipRRect(
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                          child: Image.network(
-                                            url,
-                                            width: 50,
-                                            height: 50,
-                                            fit: BoxFit.cover,
-                                            errorBuilder:
-                                                (context, error, stackTrace) =>
-                                                    const Icon(
-                                                      Icons.image,
-                                                      color: Colors.grey,
-                                                    ),
-                                          ),
-                                        );
-                                      },
-                                      separatorBuilder: (_, __) =>
-                                          const SizedBox(width: 6),
-                                    )
-                                  : const Icon(Icons.image, color: Colors.grey),
-                            ),
+                            leading: displayImages.isNotEmpty
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Image.network(
+                                      displayImages.first,
+                                      width: 60,
+                                      height: 60,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              const Icon(
+                                                Icons.image,
+                                                color: Colors.grey,
+                                              ),
+                                    ),
+                                  )
+                                : const Icon(Icons.image, color: Colors.grey),
                             title: Text(
                               name,
                               style: const TextStyle(
@@ -270,7 +254,7 @@ class CartScreen extends StatelessWidget {
                                                 ),
                                                 padding:
                                                     const EdgeInsets.symmetric(
-                                                      horizontal: 12,
+                                                      horizontal: 8,
                                                       vertical: 4,
                                                     ),
                                                 tapTargetSize:
@@ -383,7 +367,7 @@ class CartScreen extends StatelessWidget {
                                                 'Place Order',
                                                 style: TextStyle(
                                                   color: Colors.white,
-                                                  fontSize: 12,
+                                                  fontSize: 11,
                                                 ),
                                               ),
                                             );
@@ -392,7 +376,7 @@ class CartScreen extends StatelessWidget {
                                       },
                                     ),
 
-                                    const SizedBox(height: 4),
+                                    const SizedBox(height: 2),
                                     // Status label
                                     StreamBuilder<QuerySnapshot>(
                                       stream: FirebaseFirestore.instance
@@ -433,7 +417,7 @@ class CartScreen extends StatelessWidget {
                                           label,
                                           style: TextStyle(
                                             color: color,
-                                            fontSize: 11,
+                                            fontSize: 10,
                                             fontWeight: FontWeight.w600,
                                           ),
                                         );
@@ -441,12 +425,15 @@ class CartScreen extends StatelessWidget {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(width: 8),
+                                const SizedBox(width: 4),
                                 IconButton(
                                   icon: const Icon(
                                     Icons.delete,
                                     color: Colors.redAccent,
+                                    size: 20,
                                   ),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
                                   onPressed: () {
                                     FirebaseFirestore.instance
                                         .collection('cart')
