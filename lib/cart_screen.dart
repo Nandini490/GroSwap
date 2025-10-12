@@ -145,8 +145,22 @@ class CartScreen extends StatelessWidget {
 
                         final itemData =
                             (itemDoc.data() as Map<String, dynamic>?) ?? {};
-                        final imageUrl = (itemData['imageUrl'] ?? '')
+                        // Support multiple images saved as `imageUrls` (new)
+                        // while keeping `imageUrl` (fallback) for backward compatibility.
+                        final imageUrls =
+                            ((itemData['imageUrls'] as List<dynamic>?) ??
+                                    <dynamic>[])
+                                .map((e) => e.toString())
+                                .where((s) => s.isNotEmpty)
+                                .toList();
+                        final fallbackImage = (itemData['imageUrl'] ?? '')
                             .toString();
+                        final displayImages = imageUrls.isNotEmpty
+                            ? imageUrls
+                            : (fallbackImage.isNotEmpty
+                                  ? [fallbackImage]
+                                  : <String>[]);
+
                         final name = (itemData['name'] ?? 'Unnamed').toString();
                         final type =
                             (itemData['type'] ?? itemData['category'] ?? '')
@@ -165,24 +179,40 @@ class CartScreen extends StatelessWidget {
                               horizontal: 16,
                               vertical: 8,
                             ),
-                            leading: imageUrl.isNotEmpty
-                                ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-
-                                    child: Image.network(
-                                      imageUrl,
-                                      width: 50,
-                                      height: 50,
-                                      fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (context, error, stackTrace) =>
-                                              const Icon(
-                                                Icons.image,
-                                                color: Colors.grey,
-                                              ),
-                                    ),
-                                  )
-                                : const Icon(Icons.image, color: Colors.grey),
+                            leading: SizedBox(
+                              width: 120,
+                              height: 52,
+                              child: displayImages.isNotEmpty
+                                  ? ListView.separated(
+                                      scrollDirection: Axis.horizontal,
+                                      itemCount: displayImages.length > 3
+                                          ? 3
+                                          : displayImages.length,
+                                      itemBuilder: (context, i) {
+                                        final url = displayImages[i];
+                                        return ClipRRect(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          child: Image.network(
+                                            url,
+                                            width: 50,
+                                            height: 50,
+                                            fit: BoxFit.cover,
+                                            errorBuilder:
+                                                (context, error, stackTrace) =>
+                                                    const Icon(
+                                                      Icons.image,
+                                                      color: Colors.grey,
+                                                    ),
+                                          ),
+                                        );
+                                      },
+                                      separatorBuilder: (_, __) =>
+                                          const SizedBox(width: 6),
+                                    )
+                                  : const Icon(Icons.image, color: Colors.grey),
+                            ),
                             title: Text(
                               name,
                               style: const TextStyle(

@@ -192,12 +192,18 @@ class _WishlistScreenState extends State<WishlistScreen> {
                       (doc.data() as Map<String, dynamic>?) ??
                       <String, dynamic>{};
 
-                  // Image URL fallback
-                  final rawUrl = itemData['imageUrl'];
-                  final imageUrl =
-                      (rawUrl != null && rawUrl.toString().isNotEmpty)
-                      ? rawUrl.toString()
-                      : 'https://via.placeholder.com/150';
+                  // Support multiple images: prefer `imageUrls` array, fallback to `imageUrl` or placeholder.
+                  final imageUrls =
+                      ((itemData['imageUrls'] as List<dynamic>?) ?? <dynamic>[])
+                          .map((e) => e.toString())
+                          .where((s) => s.isNotEmpty)
+                          .toList();
+                  final fallbackImage = (itemData['imageUrl'] ?? '').toString();
+                  final displayImages = imageUrls.isNotEmpty
+                      ? imageUrls
+                      : (fallbackImage.isNotEmpty
+                            ? [fallbackImage]
+                            : <String>[]);
 
                   // Type, name, price fallbacks
                   final type =
@@ -217,15 +223,42 @@ class _WishlistScreenState extends State<WishlistScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: ListTile(
-                      leading: ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: Image.network(
-                          imageUrl,
-                          width: 50,
-                          height: 50,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              Container(
+                      leading: SizedBox(
+                        width: 120,
+                        height: 52,
+                        child: displayImages.isNotEmpty
+                            ? ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: displayImages.length > 3
+                                    ? 3
+                                    : displayImages.length,
+                                itemBuilder: (context, i) {
+                                  final url = displayImages[i];
+                                  return ClipRRect(
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: Image.network(
+                                      url,
+                                      width: 50,
+                                      height: 50,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              Container(
+                                                width: 50,
+                                                height: 50,
+                                                color: Colors.grey[300],
+                                                child: const Icon(
+                                                  Icons.image_not_supported,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                    ),
+                                  );
+                                },
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(width: 6),
+                              )
+                            : Container(
                                 width: 50,
                                 height: 50,
                                 color: Colors.grey[300],
@@ -234,7 +267,6 @@ class _WishlistScreenState extends State<WishlistScreen> {
                                   color: Colors.grey,
                                 ),
                               ),
-                        ),
                       ),
                       title: Text(
                         name,

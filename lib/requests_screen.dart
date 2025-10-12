@@ -64,9 +64,11 @@ class RequestsScreen extends StatelessWidget {
               final d = docs[index];
               final data = (d.data() as Map<String, dynamic>?) ?? {};
               final requesterEmail = (data['requesterEmail'] ?? '').toString();
+              final requesterName = (data['requesterName'] ?? '').toString();
               // requesterId available in data if needed
               final itemName = (data['itemName'] ?? 'Item').toString();
               final status = (data['status'] ?? 'pending').toString();
+              final itemId = (data['itemId'] ?? '').toString();
 
               Color statusColor;
               if (status == 'accepted')
@@ -76,61 +78,142 @@ class RequestsScreen extends StatelessWidget {
               else
                 statusColor = Colors.orange;
 
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 6),
-                child: ListTile(
-                  title: Text(
-                    itemName,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text('From: $requesterEmail'),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (status == 'pending') ...[
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                          ),
-                          onPressed: () async {
-                            await FirebaseFirestore.instance
-                                .collection('requests')
-                                .doc(d.id)
-                                .update({'status': 'accepted'});
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Request accepted')),
-                            );
-                          },
-                          child: const Text('Accept'),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                          ),
-                          onPressed: () async {
-                            await FirebaseFirestore.instance
-                                .collection('requests')
-                                .doc(d.id)
-                                .update({'status': 'rejected'});
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Request rejected')),
-                            );
-                          },
-                          child: const Text('Reject'),
-                        ),
-                      ] else ...[
-                        Text(
-                          status,
-                          style: TextStyle(
-                            color: statusColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
+              // Fetch the referenced item to show images (non-blocking UI)
+              return FutureBuilder<DocumentSnapshot?>(
+                future: itemId.isNotEmpty
+                    ? FirebaseFirestore.instance
+                          .collection('items')
+                          .doc(itemId)
+                          .get()
+                    : Future.value(null),
+                builder: (context, itemSnap) {
+                  final itemData =
+                      (itemSnap.hasData &&
+                          itemSnap.data != null &&
+                          itemSnap.data!.exists)
+                      ? (itemSnap.data!.data() as Map<String, dynamic>?) ?? {}
+                      : <String, dynamic>{};
+
+                  final imageUrls =
+                      ((itemData['imageUrls'] as List<dynamic>?) ?? <dynamic>[])
+                          .map((e) => e.toString())
+                          .where((s) => s.isNotEmpty)
+                          .toList();
+                  final fallbackImage = (itemData['imageUrl'] ?? '').toString();
+                  final displayImages = imageUrls.isNotEmpty
+                      ? imageUrls
+                      : (fallbackImage.isNotEmpty
+                            ? [fallbackImage]
+                            : <String>[]);
+
+                  return Card(
+                    margin: const EdgeInsets.symmetric(vertical: 6),
+                    child: ListTile(
+                      leading: SizedBox(
+                        width: 120,
+                        height: 52,
+                        child: displayImages.isNotEmpty
+                            ? ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: displayImages.length > 3
+                                    ? 3
+                                    : displayImages.length,
+                                itemBuilder: (context, i) {
+                                  final url = displayImages[i];
+                                  return ClipRRect(
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: Image.network(
+                                      url,
+                                      width: 50,
+                                      height: 50,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              Container(
+                                                width: 50,
+                                                height: 50,
+                                                color: Colors.grey[300],
+                                                child: const Icon(
+                                                  Icons.image_not_supported,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                    ),
+                                  );
+                                },
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(width: 6),
+                              )
+                            : Container(
+                                width: 50,
+                                height: 50,
+                                color: Colors.grey[300],
+                                child: const Icon(
+                                  Icons.image_not_supported,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                      ),
+                      title: Text(
+                        itemName,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(
+                        'From: ${requesterName.isNotEmpty ? requesterName : requesterEmail}',
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (status == 'pending') ...[
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                              ),
+                              onPressed: () async {
+                                await FirebaseFirestore.instance
+                                    .collection('requests')
+                                    .doc(d.id)
+                                    .update({'status': 'accepted'});
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Request accepted'),
+                                  ),
+                                );
+                              },
+                              child: const Text('Accept'),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                              ),
+                              onPressed: () async {
+                                await FirebaseFirestore.instance
+                                    .collection('requests')
+                                    .doc(d.id)
+                                    .update({'status': 'rejected'});
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Request rejected'),
+                                  ),
+                                );
+                              },
+                              child: const Text('Reject'),
+                            ),
+                          ] else ...[
+                            Text(
+                              status,
+                              style: TextStyle(
+                                color: statusColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                },
               );
             },
           );

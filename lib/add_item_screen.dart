@@ -27,8 +27,9 @@ class _AddItemScreenState extends State<AddItemScreen> {
   String selectedCondition = 'New';
   String selectedPurpose = 'Sell';
   DateTime? _selectedExpiryDate;
-  File? _selectedImage;
-  String? _uploadedImageUrl; // Store the uploaded Cloudinary URL
+  // Multiple image support
+  List<File> _selectedImages = [];
+  List<String> _uploadedImageUrls = []; // Store uploaded Cloudinary URLs
   bool _isLoading = false;
   bool _isUploadingImage = false; // Track image upload state
 
@@ -39,98 +40,85 @@ class _AddItemScreenState extends State<AddItemScreen> {
     cache: false,
   );
 
-  // Pick image from gallery and upload immediately
-  Future<void> _pickImage() async {
+  // Pick multiple images from gallery and upload each to Cloudinary
+  Future<void> _pickImages() async {
     try {
       // Request storage permission for Android
       if (Platform.isAndroid) {
         PermissionStatus status = await Permission.storage.request();
         if (!status.isGranted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Permission denied to access storage')),
+            const SnackBar(
+              content: Text('Permission denied to access storage'),
+            ),
           );
           return;
         }
       }
 
-      // Pick image
-      final pickedFile = await ImagePicker().pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 800,
-        maxHeight: 800,
+      final pickedFiles = await ImagePicker().pickMultiImage(
+        maxWidth: 1200,
+        maxHeight: 1200,
         imageQuality: 80,
       );
 
-      if (pickedFile != null) {
-        final file = File(pickedFile.path);
-        if (file.existsSync()) {
-          setState(() {
-            _selectedImage = file;
-            _isUploadingImage = true;
-          });
-          print("Selected image path: ${file.path}");
+      if (pickedFiles.isEmpty) return;
 
-          // Upload to Cloudinary immediately
-          await _uploadToCloudinary(file);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Selected file does not exist')),
-          );
-        }
+      setState(() => _isUploadingImage = true);
+
+      for (final picked in pickedFiles) {
+        final file = File(picked.path);
+        if (!file.existsSync()) continue;
+        // add to preview list immediately
+        setState(() => _selectedImages.add(file));
+        // upload and collect URL
+        final url = await _uploadToCloudinary(file);
+        if (url != null) setState(() => _uploadedImageUrls.add(url));
       }
+
+      setState(() => _isUploadingImage = false);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking image: $e')),
-      );
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error picking images: $e')));
       setState(() => _isUploadingImage = false);
     }
   }
 
-  // Upload image to Cloudinary
-  Future<void> _uploadToCloudinary(File imageFile) async {
+  // Upload image to Cloudinary and return secure URL (or null)
+  Future<String?> _uploadToCloudinary(File imageFile) async {
     try {
-      CloudinaryResponse response = await cloudinary.uploadFile(
-        CloudinaryFile.fromFile(
-          imageFile.path,
-          folder: 'resourcely_items',
-        ),
+      final response = await cloudinary.uploadFile(
+        CloudinaryFile.fromFile(imageFile.path, folder: 'resourcely_items'),
       );
-
-      setState(() {
-        _uploadedImageUrl = response.secureUrl;
-        _isUploadingImage = false;
-      });
-
-      if (mounted) {
+      if (mounted)
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ Image uploaded successfully!'),
+            content: Text('\u2705 Image uploaded'),
             backgroundColor: Color(0xFF507B7B),
-            duration: Duration(seconds: 2),
+            duration: Duration(seconds: 1),
           ),
         );
-      }
-
-      print("Image uploaded to Cloudinary: $_uploadedImageUrl");
+      return response.secureUrl;
     } catch (e) {
-      setState(() => _isUploadingImage = false);
-      
-      if (mounted) {
+      if (mounted)
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to upload image: $e'),
             backgroundColor: Colors.red,
           ),
         );
-      }
-      print("Cloudinary upload error: $e");
+      return null;
     }
   }
 
-  void _removeImage() {
+  void _removeImageAt(int index) {
     setState(() {
-      _selectedImage = null;
-      _uploadedImageUrl = null;
+      if (index >= 0 && index < _selectedImages.length)
+        _selectedImages.removeAt(index);
+      if (index >= 0 && index < _uploadedImageUrls.length)
+        _uploadedImageUrls.removeAt(index);
     });
   }
 
@@ -177,7 +165,11 @@ class _AddItemScreenState extends State<AddItemScreen> {
         'unit': _unitController.text.trim(),
         'location': _locationController.text.trim(),
         'notes': _notesController.text.trim(),
-        'imageUrl': _uploadedImageUrl ?? '', // Use the pre-uploaded URL
+        // Save array of image URLs and keep a single-image fallback for older code
+        'imageUrls': _uploadedImageUrls,
+        'imageUrl': _uploadedImageUrls.isNotEmpty
+            ? _uploadedImageUrls.first
+            : '',
         'timestamp': FieldValue.serverTimestamp(),
       };
 
@@ -185,7 +177,9 @@ class _AddItemScreenState extends State<AddItemScreen> {
         data['expiryDate'] = Timestamp.fromDate(_selectedExpiryDate!);
       }
 
-      final docRef = await FirebaseFirestore.instance.collection('items').add(data);
+      final docRef = await FirebaseFirestore.instance
+          .collection('items')
+          .add(data);
 
       // Add item to 'mylist'
       await FirebaseFirestore.instance.collection('mylist').add({
@@ -241,115 +235,126 @@ class _AddItemScreenState extends State<AddItemScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Image Picker with Upload Indicator
-                Stack(
-                  children: [
-                    GestureDetector(
-                      onTap: _isUploadingImage ? null : _pickImage,
-                      child: _selectedImage != null && _selectedImage!.existsSync()
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Stack(
-                                children: [
-                                  Image.file(
-                                    _selectedImage!,
-                                    height: 160,
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
-                                  ),
-                                  if (_isUploadingImage)
-                                    Container(
-                                      height: 160,
-                                      width: double.infinity,
-                                      color: Colors.black54,
-                                      child: const Center(
-                                        child: Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            CircularProgressIndicator(
-                                              color: Colors.white,
-                                            ),
-                                            SizedBox(height: 8),
-                                            Text(
-                                              'Uploading...',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ],
+                // Images picker + preview row
+                SizedBox(
+                  height: 180,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _selectedImages.isNotEmpty
+                            ? ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: _selectedImages.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(width: 8),
+                                itemBuilder: (context, idx) {
+                                  final f = _selectedImages[idx];
+                                  final uploaded =
+                                      idx < _uploadedImageUrls.length;
+                                  return Stack(
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Image.file(
+                                          f,
+                                          width: 160,
+                                          height: 160,
+                                          fit: BoxFit.cover,
                                         ),
                                       ),
+                                      if (!uploaded && _isUploadingImage)
+                                        Positioned.fill(
+                                          child: Container(
+                                            color: Colors.black45,
+                                            child: const Center(
+                                              child: CircularProgressIndicator(
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      Positioned(
+                                        top: 6,
+                                        right: 6,
+                                        child: GestureDetector(
+                                          onTap: () => _removeImageAt(idx),
+                                          child: const CircleAvatar(
+                                            backgroundColor: Colors.red,
+                                            child: Icon(
+                                              Icons.close,
+                                              color: Colors.white,
+                                              size: 18,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              )
+                            : GestureDetector(
+                                onTap: _isUploadingImage ? null : _pickImages,
+                                child: Container(
+                                  height: 160,
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
                                     ),
-                                ],
-                              ),
-                            )
-                          : Container(
-                              height: 160,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.grey.shade300),
-                              ),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.add_a_photo,
-                                  size: 50,
-                                  color: Colors.grey,
+                                  ),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.add_a_photo,
+                                      size: 50,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
                                 ),
+                              ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: _isUploadingImage ? null : _pickImages,
+                            icon: const Icon(Icons.add),
+                            label: const Text('Add Photos'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF507B7B),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          if (_isUploadingImage)
+                            const Text(
+                              'Uploading...',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          if (!_isUploadingImage &&
+                              _uploadedImageUrls.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 8.0),
+                              child: Text(
+                                '${_uploadedImageUrls.length} uploaded',
+                                style: const TextStyle(color: Colors.white),
                               ),
                             ),
-                    ),
-                    if (_selectedImage != null && !_isUploadingImage)
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: InkWell(
-                          onTap: _removeImage,
-                          child: const CircleAvatar(
-                            backgroundColor: Colors.red,
-                            child: Icon(Icons.close, color: Colors.white),
-                          ),
-                        ),
+                        ],
                       ),
-                    if (_uploadedImageUrl != null && !_isUploadingImage)
-                      Positioned(
-                        top: 8,
-                        left: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.green,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.check_circle, color: Colors.white, size: 16),
-                              SizedBox(width: 4),
-                              Text(
-                                'Uploaded',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 16),
                 _buildTextField(_nameController, "Item Name", Icons.label),
                 const SizedBox(height: 12),
-                _buildTextField(_priceController, "Price", Icons.attach_money,
-                    inputType: TextInputType.number),
+                _buildTextField(
+                  _priceController,
+                  "Price",
+                  Icons.attach_money,
+                  inputType: TextInputType.number,
+                ),
                 const SizedBox(height: 12),
                 _buildDropdown(
                   label: "Category",
@@ -390,19 +395,35 @@ class _AddItemScreenState extends State<AddItemScreen> {
                 Row(
                   children: [
                     Expanded(
-                        child: _buildTextField(
-                            _quantityController, "Quantity", Icons.numbers)),
+                      child: _buildTextField(
+                        _quantityController,
+                        "Quantity",
+                        Icons.numbers,
+                      ),
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
-                        child: _buildTextField(
-                            _unitController, "Unit (kg, pcs...)", Icons.scale)),
+                      child: _buildTextField(
+                        _unitController,
+                        "Unit (kg, pcs...)",
+                        Icons.scale,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                _buildTextField(_locationController, "Location (optional)", Icons.location_on_outlined),
+                _buildTextField(
+                  _locationController,
+                  "Location (optional)",
+                  Icons.location_on_outlined,
+                ),
                 const SizedBox(height: 12),
-                _buildTextField(_notesController, "Notes (optional)", Icons.notes,
-                    maxLines: 2),
+                _buildTextField(
+                  _notesController,
+                  "Notes (optional)",
+                  Icons.notes,
+                  maxLines: 2,
+                ),
                 const SizedBox(height: 12),
                 if (selectedCategory == 'Grocery')
                   Center(
@@ -428,7 +449,9 @@ class _AddItemScreenState extends State<AddItemScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF507B7B),
                             padding: const EdgeInsets.symmetric(
-                                vertical: 14, horizontal: 60),
+                              vertical: 14,
+                              horizontal: 60,
+                            ),
                           ),
                           child: const Text(
                             "Save Item",
@@ -444,8 +467,13 @@ class _AddItemScreenState extends State<AddItemScreen> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, IconData icon,
-      {int maxLines = 1, TextInputType inputType = TextInputType.text}) {
+  Widget _buildTextField(
+    TextEditingController controller,
+    String label,
+    IconData icon, {
+    int maxLines = 1,
+    TextInputType inputType = TextInputType.text,
+  }) {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
@@ -462,8 +490,8 @@ class _AddItemScreenState extends State<AddItemScreen> {
       validator: (v) => (v == null || v.isEmpty) && label.contains("optional")
           ? null
           : (v == null || v.isEmpty)
-              ? 'Enter $label'
-              : null,
+          ? 'Enter $label'
+          : null,
     );
   }
 
@@ -487,10 +515,12 @@ class _AddItemScreenState extends State<AddItemScreen> {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
       ),
       items: items
-          .map((c) => DropdownMenuItem(
-                value: c,
-                child: Text(c, style: const TextStyle(color: Colors.black87)),
-              ))
+          .map(
+            (c) => DropdownMenuItem(
+              value: c,
+              child: Text(c, style: const TextStyle(color: Colors.black87)),
+            ),
+          )
           .toList(),
       onChanged: onChanged,
     );
