@@ -241,8 +241,12 @@ class CartScreen extends StatelessWidget {
                                                 padding:
                                                     const EdgeInsets.symmetric(
                                                       horizontal: 12,
-                                                      vertical: 8,
+                                                      vertical: 4,
                                                     ),
+                                                tapTargetSize:
+                                                    MaterialTapTargetSize
+                                                        .shrinkWrap,
+                                                minimumSize: const Size(0, 0),
                                               ),
                                               onPressed: hasRequest
                                                   ? null
@@ -349,6 +353,7 @@ class CartScreen extends StatelessWidget {
                                                 'Place Order',
                                                 style: TextStyle(
                                                   color: Colors.white,
+                                                  fontSize: 12,
                                                 ),
                                               ),
                                             );
@@ -357,7 +362,7 @@ class CartScreen extends StatelessWidget {
                                       },
                                     ),
 
-                                    const SizedBox(height: 6),
+                                    const SizedBox(height: 4),
                                     // Status label
                                     StreamBuilder<QuerySnapshot>(
                                       stream: FirebaseFirestore.instance
@@ -398,7 +403,7 @@ class CartScreen extends StatelessWidget {
                                           label,
                                           style: TextStyle(
                                             color: color,
-                                            fontSize: 12,
+                                            fontSize: 11,
                                             fontWeight: FontWeight.w600,
                                           ),
                                         );
