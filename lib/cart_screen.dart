@@ -181,15 +181,15 @@ class CartScreen extends StatelessWidget {
                             dense: true,
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 16,
-                              vertical: 8,
+                              vertical: 2,
                             ),
                             leading: displayImages.isNotEmpty
                                 ? ClipRRect(
                                     borderRadius: BorderRadius.circular(8),
                                     child: Image.network(
                                       displayImages.first,
-                                      width: 60,
-                                      height: 60,
+                                      width: 40,
+                                      height: 40,
                                       fit: BoxFit.cover,
                                       errorBuilder:
                                           (context, error, stackTrace) =>
@@ -205,15 +205,20 @@ class CartScreen extends StatelessWidget {
                               style: const TextStyle(
                                 color: Colors.black87,
                                 fontWeight: FontWeight.w600,
+                                fontSize: 14,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                             subtitle: Text(
                               '${type.isNotEmpty ? type + ' • ' : ''}₹$price',
                               style: const TextStyle(
                                 color: Color(0xFF6B6B6B),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -257,8 +262,8 @@ class CartScreen extends StatelessWidget {
                                                 ),
                                                 padding:
                                                     const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 4,
+                                                      horizontal: 4,
+                                                      vertical: 1,
                                                     ),
                                                 tapTargetSize:
                                                     MaterialTapTargetSize
@@ -370,7 +375,7 @@ class CartScreen extends StatelessWidget {
                                                 'Place Order',
                                                 style: TextStyle(
                                                   color: Colors.white,
-                                                  fontSize: 11,
+                                                  fontSize: 9,
                                                 ),
                                               ),
                                             );
@@ -379,7 +384,7 @@ class CartScreen extends StatelessWidget {
                                       },
                                     ),
 
-                                    const SizedBox(height: 2),
+                                    const SizedBox(height: 0),
                                     // Status label
                                     StreamBuilder<QuerySnapshot>(
                                       stream: FirebaseFirestore.instance
@@ -420,129 +425,75 @@ class CartScreen extends StatelessWidget {
                                         return Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            Text(
-                                              label,
-                                              style: TextStyle(
-                                                color: color,
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w600,
+                                            Flexible(
+                                              child: Text(
+                                                label,
+                                                style: TextStyle(
+                                                  color: color,
+                                                  fontSize: 8,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
                                             if (st == 'accepted') ...[
-                                              const SizedBox(width: 6),
+                                              const SizedBox(width: 0),
                                               // Fetch owner details to get phone and name
                                               FutureBuilder<DocumentSnapshot?>(
                                                 future: ownerId.isNotEmpty
-                                                    ? FirebaseFirestore.instance
-                                                          .collection('users')
-                                                          .doc(ownerId)
-                                                          .get()
+                                                    ? FirebaseFirestore.instance.collection('users').doc(ownerId).get()
                                                     : Future.value(null),
                                                 builder: (context, ownerSnap) {
-                                                  final ownerData =
-                                                      (ownerSnap.hasData &&
-                                                          ownerSnap.data !=
-                                                              null &&
-                                                          ownerSnap
-                                                              .data!
-                                                              .exists)
-                                                      ? (ownerSnap.data!.data()
-                                                                as Map<
-                                                                  String,
-                                                                  dynamic
-                                                                >?) ??
-                                                            {}
+                                                  final ownerData = (ownerSnap.hasData && ownerSnap.data != null && ownerSnap.data!.exists)
+                                                      ? (ownerSnap.data!.data() as Map<String, dynamic>?) ?? {}
                                                       : <String, dynamic>{};
-                                                  final ownerPhone =
-                                                      (ownerData['phone'] ?? '')
-                                                          .toString();
-                                                  final ownerName =
-                                                      (ownerData['name'] ?? '')
-                                                          .toString();
+                                                  final ownerPhone = (ownerData['phone'] ?? '').toString();
+                                                  final ownerName = (ownerData['name'] ?? '').toString();
 
                                                   return Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
+                                                    mainAxisSize: MainAxisSize.min,
                                                     children: [
                                                       IconButton(
-                                                        icon: const Icon(
-                                                          Icons.call,
-                                                          color: Colors.green,
-                                                          size: 18,
+                                                        icon: const Icon(Icons.call, color: Colors.green, size: 12),
+                                                        padding: EdgeInsets.zero,
+                                                        constraints: const BoxConstraints(
+                                                          minWidth: 16,
+                                                          minHeight: 16,
                                                         ),
-                                                        padding:
-                                                            EdgeInsets.zero,
-                                                        constraints:
-                                                            const BoxConstraints(),
-                                                        onPressed:
-                                                            ownerPhone
-                                                                .isNotEmpty
+                                                        onPressed: ownerPhone.isNotEmpty
                                                             ? () async {
-                                                                final uri = Uri(
-                                                                  scheme: 'tel',
-                                                                  path:
-                                                                      ownerPhone,
-                                                                );
+                                                                final uri = Uri(scheme: 'tel', path: ownerPhone);
                                                                 try {
-                                                                  if (await canLaunchUrl(
-                                                                    uri,
-                                                                  )) {
-                                                                    await launchUrl(
-                                                                      uri,
-                                                                    );
+                                                                  if (await canLaunchUrl(uri)) {
+                                                                    await launchUrl(uri);
                                                                   } else {
-                                                                    ScaffoldMessenger.of(
-                                                                      context,
-                                                                    ).showSnackBar(
-                                                                      const SnackBar(
-                                                                        content:
-                                                                            Text(
-                                                                              'Cannot open dialer',
-                                                                            ),
-                                                                      ),
+                                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                                      const SnackBar(content: Text('Cannot open dialer')),
                                                                     );
                                                                   }
                                                                 } catch (e) {
-                                                                  ScaffoldMessenger.of(
-                                                                    context,
-                                                                  ).showSnackBar(
-                                                                    SnackBar(
-                                                                      content: Text(
-                                                                        'Call error: $e',
-                                                                      ),
-                                                                    ),
+                                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                                    SnackBar(content: Text('Call error: $e')),
                                                                   );
                                                                 }
                                                               }
                                                             : null,
                                                       ),
-                                                      const SizedBox(width: 6),
                                                       IconButton(
-                                                        icon: const Icon(
-                                                          Icons.message,
-                                                          color: Color(
-                                                            0xFF507B7B,
-                                                          ),
-                                                          size: 18,
+                                                        icon: const Icon(Icons.message, color: Color(0xFF507B7B), size: 12),
+                                                        padding: EdgeInsets.zero,
+                                                        constraints: const BoxConstraints(
+                                                          minWidth: 16,
+                                                          minHeight: 16,
                                                         ),
-                                                        padding:
-                                                            EdgeInsets.zero,
-                                                        constraints:
-                                                            const BoxConstraints(),
-                                                        onPressed:
-                                                            ownerId.isNotEmpty
+                                                        onPressed: ownerId.isNotEmpty
                                                             ? () {
                                                                 Navigator.push(
                                                                   context,
                                                                   MaterialPageRoute(
                                                                     builder: (_) => ChatScreen(
-                                                                      otherUserId:
-                                                                          ownerId,
-                                                                      otherUserName:
-                                                                          ownerName
-                                                                              .isNotEmpty
-                                                                          ? ownerName
-                                                                          : ownerId,
+                                                                      otherUserId: ownerId,
+                                                                      otherUserName: ownerName.isNotEmpty ? ownerName : ownerId,
                                                                     ),
                                                                   ),
                                                                 );
