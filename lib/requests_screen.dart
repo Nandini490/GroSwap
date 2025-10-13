@@ -5,6 +5,24 @@ import 'package:flutter/material.dart';
 class RequestsScreen extends StatelessWidget {
   const RequestsScreen({super.key});
 
+  // Function to handle the update logic
+  Future<void> _updateRequestStatus(
+    String docId,
+    String status,
+    BuildContext context,
+  ) async {
+    await FirebaseFirestore.instance
+        .collection('requests')
+        .doc(docId)
+        .update({'status': status});
+    // ignore: use_build_context_synchronously
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Request $status'),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -71,24 +89,24 @@ class RequestsScreen extends StatelessWidget {
               final itemId = (data['itemId'] ?? '').toString();
 
               Color statusColor;
-              if (status == 'accepted')
+              if (status == 'accepted') {
                 statusColor = Colors.green;
-              else if (status == 'rejected')
+              } else if (status == 'rejected') {
                 statusColor = Colors.red;
-              else
+              } else {
                 statusColor = Colors.orange;
+              }
 
               // Fetch the referenced item to show images (non-blocking UI)
               return FutureBuilder<DocumentSnapshot?>(
                 future: itemId.isNotEmpty
                     ? FirebaseFirestore.instance
-                          .collection('items')
-                          .doc(itemId)
-                          .get()
+                        .collection('items')
+                        .doc(itemId)
+                        .get()
                     : Future.value(null),
                 builder: (context, itemSnap) {
-                  final itemData =
-                      (itemSnap.hasData &&
+                  final itemData = (itemSnap.hasData &&
                           itemSnap.data != null &&
                           itemSnap.data!.exists)
                       ? (itemSnap.data!.data() as Map<String, dynamic>?) ?? {}
@@ -103,116 +121,144 @@ class RequestsScreen extends StatelessWidget {
                   final displayImages = imageUrls.isNotEmpty
                       ? imageUrls
                       : (fallbackImage.isNotEmpty
-                            ? [fallbackImage]
-                            : <String>[]);
+                          ? [fallbackImage]
+                          : <String>[]);
 
+                  // *** START OF LAYOUT MODIFICATION ***
+                  // Use a custom structure instead of ListTile for better control
+                  // over image and button layout.
                   return Card(
                     margin: const EdgeInsets.symmetric(vertical: 6),
-                    child: ListTile(
-                      leading: SizedBox(
-                        width: 120,
-                        height: 52,
-                        child: displayImages.isNotEmpty
-                            ? ListView.separated(
-                                scrollDirection: Axis.horizontal,
-                                itemCount: displayImages.length > 3
-                                    ? 3
-                                    : displayImages.length,
-                                itemBuilder: (context, i) {
-                                  final url = displayImages[i];
-                                  return ClipRRect(
-                                    borderRadius: BorderRadius.circular(6),
-                                    child: Image.network(
-                                      url,
-                                      width: 50,
-                                      height: 50,
-                                      fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (context, error, stackTrace) =>
-                                              Container(
-                                                width: 50,
-                                                height: 50,
-                                                color: Colors.grey[300],
-                                                child: const Icon(
-                                                  Icons.image_not_supported,
-                                                  color: Colors.grey,
-                                                ),
-                                              ),
-                                    ),
-                                  );
-                                },
-                                separatorBuilder: (_, __) =>
-                                    const SizedBox(width: 6),
-                              )
-                            : Container(
-                                width: 50,
-                                height: 50,
-                                color: Colors.grey[300],
-                                child: const Icon(
-                                  Icons.image_not_supported,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                      ),
-                      title: Text(
-                        itemName,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text(
-                        'From: ${requesterName.isNotEmpty ? requesterName : requesterEmail}',
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (status == 'pending') ...[
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                              ),
-                              onPressed: () async {
-                                await FirebaseFirestore.instance
-                                    .collection('requests')
-                                    .doc(d.id)
-                                    .update({'status': 'accepted'});
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Request accepted'),
+                          // 1. Item Images (Left Side)
+                          SizedBox(
+                            width: 60, // Reduced width for better layout
+                            height: 60,
+                            child: displayImages.isNotEmpty
+                                ? ListView.separated(
+                                    scrollDirection: Axis.horizontal,
+                                    itemCount:
+                                        displayImages.length > 3 ? 3 : displayImages.length,
+                                    itemBuilder: (context, i) {
+                                      final url = displayImages[i];
+                                      return ClipRRect(
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: Image.network(
+                                          url,
+                                          width: 60,
+                                          height: 60,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) =>
+                                                  Container(
+                                            width: 60,
+                                            height: 60,
+                                            color: Colors.grey[300],
+                                            child: const Icon(
+                                              Icons.image_not_supported,
+                                              color: Colors.grey,
+                                              size: 30,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    separatorBuilder: (_, __) =>
+                                        const SizedBox(width: 6),
+                                  )
+                                : Container(
+                                    width: 60,
+                                    height: 60,
+                                    color: Colors.grey[300],
+                                    child: const Icon(
+                                      Icons.image_not_supported,
+                                      color: Colors.grey,
+                                      size: 30,
+                                    ),
                                   ),
-                                );
-                              },
-                              child: const Text('Accept'),
+                          ),
+                          const SizedBox(width: 12),
+
+                          // 2. Request Details (Center)
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  itemName,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold, fontSize: 16),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'From: ${requesterName.isNotEmpty ? requesterName : requesterEmail}',
+                                  style: TextStyle(color: Colors.grey[700]),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 8),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red,
-                              ),
-                              onPressed: () async {
-                                await FirebaseFirestore.instance
-                                    .collection('requests')
-                                    .doc(d.id)
-                                    .update({'status': 'rejected'});
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Request rejected'),
+                          ),
+                          const SizedBox(width: 8),
+
+                          // 3. Status/Action Buttons (Right Side)
+                          Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              if (status == 'pending') ...[
+                                SizedBox(
+                                  width: 90, // Set fixed width for alignment
+                                  child: ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 4, vertical: 8),
+                                      textStyle: const TextStyle(fontSize: 12),
+                                    ),
+                                    onPressed: () => _updateRequestStatus(
+                                        d.id, 'accepted', context),
+                                    child: const Text('Accept'),
                                   ),
-                                );
-                              },
-                              child: const Text('Reject'),
-                            ),
-                          ] else ...[
-                            Text(
-                              status,
-                              style: TextStyle(
-                                color: statusColor,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
+                                ),
+                                const SizedBox(height: 8),
+                                SizedBox(
+                                  width: 90, // Set fixed width for alignment
+                                  child: ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 4, vertical: 8),
+                                      textStyle: const TextStyle(fontSize: 12),
+                                    ),
+                                    onPressed: () => _updateRequestStatus(
+                                        d.id, 'rejected', context),
+                                    child: const Text('Reject'),
+                                  ),
+                                ),
+                              ] else ...[
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Text(
+                                    status.toUpperCase(),
+                                    style: TextStyle(
+                                      color: statusColor,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
                         ],
                       ),
                     ),
                   );
+                  // *** END OF LAYOUT MODIFICATION ***
                 },
               );
             },
