@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -20,23 +21,40 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   int _pageIndex = 0;
   bool _adding = false;
   bool _added = false;
+  late final PageController _pageController;
 
   List<String> get _images {
+    // Prefer `images`, then `imageUrls`, then `imageUrl` fallback.
+    final fromImages =
+        ((widget.itemData['images'] as List<dynamic>?) ?? <dynamic>[])
+            .map((e) => e.toString())
+            .where((s) => s.isNotEmpty)
+            .toList();
+    if (fromImages.isNotEmpty) return fromImages;
+
     final list =
         ((widget.itemData['imageUrls'] as List<dynamic>?) ?? <dynamic>[])
             .map((e) => e.toString())
             .where((s) => s.isNotEmpty)
             .toList();
+    if (list.isNotEmpty) return list;
+
     final fallback = (widget.itemData['imageUrl'] ?? '').toString();
-    if (list.isEmpty && fallback.isNotEmpty) return [fallback];
-    if (list.isEmpty) return [];
-    return list;
+    if (fallback.isNotEmpty) return [fallback];
+    return [];
   }
 
   @override
   void initState() {
     super.initState();
     _checkInCart();
+    _pageController = PageController(initialPage: 0);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<void> _checkInCart() async {
@@ -94,23 +112,33 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       child: Stack(
         children: [
           PageView.builder(
+            controller: _pageController,
             itemCount: images.length,
+            physics: kIsWeb
+                ? const ClampingScrollPhysics()
+                : const BouncingScrollPhysics(),
             onPageChanged: (i) => setState(() => _pageIndex = i),
             itemBuilder: (context, i) {
               final url = images[i];
-              return Hero(
-                tag: 'product_${widget.itemId}_$i',
-                child: Image.network(
-                  url,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  loadingBuilder: (context, child, prog) {
-                    if (prog == null) return child;
-                    return const Center(child: CircularProgressIndicator());
-                  },
-                  errorBuilder: (context, _, __) => Image.asset(
-                    'assets/images/placeholder.jpg',
-                    fit: BoxFit.cover,
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                child: Hero(
+                  tag: 'product_${widget.itemId}_$i',
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      url,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      loadingBuilder: (context, child, prog) {
+                        if (prog == null) return child;
+                        return const Center(child: CircularProgressIndicator());
+                      },
+                      errorBuilder: (context, _, __) => Image.asset(
+                        'assets/images/placeholder.jpg',
+                        fit: BoxFit.cover,
+                      ),
+                    ),
                   ),
                 ),
               );
