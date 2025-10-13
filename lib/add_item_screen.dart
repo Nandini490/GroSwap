@@ -86,6 +86,55 @@ class _AddItemScreenState extends State<AddItemScreen> {
     }
   }
 
+  // Take a photo using the device camera and upload it
+  Future<void> _takePhoto() async {
+    try {
+      // Request camera permission for Android
+      if (Platform.isAndroid) {
+        PermissionStatus camStatus = await Permission.camera.request();
+        if (!camStatus.isGranted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Camera permission denied')),
+          );
+          return;
+        }
+      }
+
+      final picked = await ImagePicker().pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 80,
+      );
+
+      // User cancelled
+      if (picked == null) return;
+
+      setState(() => _isUploadingImage = true);
+
+      final file = File(picked.path);
+      if (!file.existsSync()) {
+        setState(() => _isUploadingImage = false);
+        return;
+      }
+
+      // add to preview immediately
+      setState(() => _selectedImages.add(file));
+
+      final url = await _uploadToCloudinary(file);
+      if (url != null) setState(() => _uploadedImageUrls.add(url));
+
+      setState(() => _isUploadingImage = false);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error taking photo: $e')));
+      }
+      setState(() => _isUploadingImage = false);
+    }
+  }
+
   // Upload image to Cloudinary and return secure URL (or null)
   Future<String?> _uploadToCloudinary(File imageFile) async {
     try {
@@ -322,6 +371,15 @@ class _AddItemScreenState extends State<AddItemScreen> {
                             onPressed: _isUploadingImage ? null : _pickImages,
                             icon: const Icon(Icons.add),
                             label: const Text('Add Photos'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF507B7B),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            onPressed: _isUploadingImage ? null : _takePhoto,
+                            icon: const Icon(Icons.camera_alt),
+                            label: const Text('Take Photo'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF507B7B),
                             ),
