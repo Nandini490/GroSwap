@@ -572,6 +572,9 @@ class _CartScreenState extends State<CartScreen> {
                                                                       ownerId,
                                                                   otherUserName:
                                                                       ownerName,
+                                                                  itemId:
+                                                                      cartItem['itemId'] ??
+                                                                      '',
                                                                 ),
                                                               ),
                                                             );

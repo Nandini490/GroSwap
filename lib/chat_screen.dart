@@ -5,11 +5,13 @@ import 'package:flutter/material.dart';
 class ChatScreen extends StatefulWidget {
   final String otherUserId;
   final String otherUserName;
+  final String? itemId; // optional: link chat to a specific item/order
 
   const ChatScreen({
     super.key,
     required this.otherUserId,
     required this.otherUserName,
+    this.itemId,
   });
 
   @override
@@ -25,6 +27,10 @@ class _ChatScreenState extends State<ChatScreen> {
     // deterministic room id for two participants
     if (_me == null) return '';
     final ids = [_me!, widget.otherUserId]..sort();
+    if (widget.itemId != null && widget.itemId!.isNotEmpty) {
+      // include itemId so chats are separate per item
+      return '${widget.itemId}_${ids.join('_')}';
+    }
     return ids.join('_');
   }
 
@@ -35,12 +41,16 @@ class _ChatScreenState extends State<ChatScreen> {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
     if (_me == null) return;
+    final user = FirebaseAuth.instance.currentUser;
+    final senderName = user?.displayName ?? user?.email ?? '';
     final doc = _messagesRef.doc();
     await doc.set({
       'id': doc.id,
       'chatId': _chatId,
+      'itemId': widget.itemId ?? '',
       'participants': [_me, widget.otherUserId],
       'senderId': _me,
+      'senderName': senderName,
       'messageText': text,
       'timestamp': FieldValue.serverTimestamp(),
     });
@@ -111,18 +121,19 @@ class _ChatScreenState extends State<ChatScreen> {
                 }
 
                 if (snap.hasError) {
-                  return Center(
-                      child: Text('Chat error: ${snap.error}'));
+                  return Center(child: Text('Chat error: ${snap.error}'));
                 }
 
                 final docs = snap.data?.docs ?? [];
-                final sortedDocs = docs..sort((a, b) {
-                  final tsA = a['timestamp'] as Timestamp?;
-                  final tsB = b['timestamp'] as Timestamp?;
-                  return (tsA?.compareTo(tsB ?? Timestamp.now()) ?? 0).compareTo(
-                    (tsB?.compareTo(tsA ?? Timestamp.now()) ?? 0)
-                  );
-                });
+                final sortedDocs = docs
+                  ..sort((a, b) {
+                    final tsA = a['timestamp'] as Timestamp?;
+                    final tsB = b['timestamp'] as Timestamp?;
+                    return (tsA?.compareTo(tsB ?? Timestamp.now()) ?? 0)
+                        .compareTo(
+                          (tsB?.compareTo(tsA ?? Timestamp.now()) ?? 0),
+                        );
+                  });
                 if (sortedDocs.isEmpty) {
                   return const Center(child: Text('Start the conversation'));
                 }
