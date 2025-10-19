@@ -5,6 +5,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloudinary_public/cloudinary_public.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart' show LatLng;
+import 'package:cloud_firestore/cloud_firestore.dart' show GeoPoint;
+import 'profile_screen.dart' show MapPickerScreen;
 
 class AddItemScreen extends StatefulWidget {
   const AddItemScreen({super.key});
@@ -21,6 +25,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
   final _quantityController = TextEditingController();
   final _unitController = TextEditingController();
   final _locationController = TextEditingController();
+  LatLng? _pickedLocation; // lat/lng selected via map or auto-location
   final _notesController = TextEditingController();
 
   String selectedCategory = 'Grocery';
@@ -223,6 +228,13 @@ class _AddItemScreenState extends State<AddItemScreen> {
             : '',
         'timestamp': FieldValue.serverTimestamp(),
       };
+
+      if (_pickedLocation != null) {
+        data['locationGeoPoint'] = GeoPoint(
+          _pickedLocation!.latitude,
+          _pickedLocation!.longitude,
+        );
+      }
 
       if (selectedCategory == 'Grocery' && _selectedExpiryDate != null) {
         data['expiryDate'] = Timestamp.fromDate(_selectedExpiryDate!);
@@ -477,6 +489,32 @@ class _AddItemScreenState extends State<AddItemScreen> {
                   "Location (optional)",
                   Icons.location_on_outlined,
                 ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _useCurrentLocation,
+                        icon: const Icon(Icons.my_location),
+                        label: const Text('Use current location'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF507B7B),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _pickLocationOnMap,
+                        icon: const Icon(Icons.map),
+                        label: const Text('Pick on map'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF507B7B),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 12),
                 _buildTextField(
                   _notesController,
@@ -618,5 +656,62 @@ class _AddItemScreenState extends State<AddItemScreen> {
           .toList(),
       onChanged: onChanged,
     );
+  }
+
+  Future<void> _useCurrentLocation() async {
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Enable location services')),
+        );
+        return;
+      }
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) return;
+      }
+      if (permission == LocationPermission.deniedForever) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Location permission denied')),
+        );
+        return;
+      }
+
+      final pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      setState(() {
+        _pickedLocation = LatLng(pos.latitude, pos.longitude);
+        _locationController.text =
+            '${pos.latitude.toStringAsFixed(6)}, ${pos.longitude.toStringAsFixed(6)}';
+      });
+    } catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Location error: $e')));
+    }
+  }
+
+  Future<void> _pickLocationOnMap() async {
+    try {
+      final picked = await Navigator.push<LatLng?>(
+        context,
+        MaterialPageRoute(builder: (_) => const MapPickerScreen()),
+      );
+      if (picked != null) {
+        setState(() {
+          _pickedLocation = picked;
+          _locationController.text =
+              '${picked.latitude.toStringAsFixed(6)}, ${picked.longitude.toStringAsFixed(6)}';
+        });
+      }
+    } catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Map pick error: $e')));
+    }
   }
 }

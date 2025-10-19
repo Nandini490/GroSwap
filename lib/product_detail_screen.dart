@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'dart:async';
 
 class ProductDetailScreen extends StatefulWidget {
   final String itemId;
@@ -22,6 +23,10 @@ class ProductDetailScreen extends StatefulWidget {
 class _ProductDetailScreenState extends State<ProductDetailScreen>
     with SingleTickerProviderStateMixin {
   int _pageIndex = 0;
+  late PageController _pageController;
+  Timer? _autoPlayTimer;
+  int _currentImageCount = 0;
+  int? _pendingPage;
   bool _adding = false;
   bool _added = false;
   bool _wishlisted = false;
@@ -75,12 +80,79 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     super.initState();
     _checkInCart();
     _tabController = TabController(length: 4, vsync: this);
+    _pageController = PageController();
+    _startAutoPlay();
   }
 
   @override
   void dispose() {
+    _autoPlayTimer?.cancel();
+    _pageController.dispose();
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _startAutoPlay() {
+    _autoPlayTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (!mounted) return;
+      if (_currentImageCount <= 1) return;
+      final next = (_pageIndex + 1) % _currentImageCount;
+      if (_pageController.hasClients) {
+        _pageController.animateToPage(next,
+            duration: const Duration(milliseconds: 800), curve: Curves.easeInOut);
+      }
+    });
+  }
+
+  void _animateToPage(int page) {
+    // Try animate immediately; if controller not attached yet, schedule for next frame
+    try {
+      if (_pageController.hasClients) {
+        try {
+          _pageController.animateToPage(page,
+              duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+        } catch (_) {
+          try {
+            _pageController.jumpToPage(page);
+          } catch (_) {}
+        }
+        if (kDebugMode) print('navigated to page $page (animate)');
+        setState(() => _pageIndex = page);
+        return;
+      }
+    } catch (_) {}
+    // If controller has no clients yet, replace it with a controller set to target page
+    try {
+      final old = _pageController;
+      _pageController = PageController(initialPage: page);
+      try {
+        old.dispose();
+      } catch (_) {}
+      if (mounted) setState(() => _pageIndex = page);
+      if (kDebugMode) print('replaced page controller and set page $page');
+      return;
+    } catch (_) {
+      // last fallback: schedule post frame to try again
+      _pendingPage = page;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (_pendingPage == null) return;
+        try {
+          if (_pageController.hasClients) {
+            try {
+              _pageController.animateToPage(_pendingPage!,
+                  duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+            } catch (_) {
+              try {
+                _pageController.jumpToPage(_pendingPage!);
+              } catch (_) {}
+            }
+            if (kDebugMode) print('navigated to pending page ${_pendingPage!}');
+            _pendingPage = null;
+          }
+        } catch (_) {}
+      });
+    }
   }
 
   Future<void> _checkInCart() async {
@@ -125,8 +197,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   }
 
   Widget _buildCarousel(BuildContext context) {
-    // Use FutureBuilder so we can fall back to fetching from Firestore if
-    // the provided itemData didn't include images.
+    // Use FutureBuilder to use local images or fall back to Firestore
     return FutureBuilder<List<String>>(
       future: Future.value(_images).then((local) async {
         if (local.isNotEmpty) return local;
@@ -148,87 +219,145 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           );
         }
 
-        // Modern card-like carousel
+        // update internal count after build
+        if (_currentImageCount != images.length) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) setState(() => _currentImageCount = images.length);
+          });
+        }
+
+        // Pre-build arrow widgets to avoid complex inline expressions
+        final leftArrow = images.length > 1
+            ? Positioned(
+                left: 8,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: InkWell(
+                    onTap: () {
+                      final prev = (_pageIndex - 1) < 0 ? images.length - 1 : _pageIndex - 1;
+                      _animateToPage(prev);
+                    },
+                    borderRadius: BorderRadius.circular(24),
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.35),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.arrow_back_ios,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            : const SizedBox.shrink();
+
+        final rightArrow = images.length > 1
+            ? Positioned(
+                right: 8,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: InkWell(
+                    onTap: () {
+                      final next = (_pageIndex + 1) % images.length;
+                      _animateToPage(next);
+                    },
+                    borderRadius: BorderRadius.circular(24),
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.35),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            : const SizedBox.shrink();
+
+        final dots = Positioned(
+          left: 0,
+          right: 0,
+          bottom: 8,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(images.length, (i) {
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: _pageIndex == i ? 12 : 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: _pageIndex == i ? Colors.white : Colors.white54,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              );
+            }),
+          ),
+        );
+
         return AspectRatio(
           aspectRatio: 16 / 9,
-          child: Column(
+          child: Stack(
             children: [
-              Expanded(
-                child: CarouselSlider.builder(
-                  itemCount: images.length,
-                  itemBuilder: (context, index, realIdx) {
-                    final url = images[index];
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12.0,
-                        vertical: 8.0,
-                      ),
-                      child: Hero(
-                        tag: 'product_${widget.itemId}_$index',
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.grey[200],
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.08),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Image.network(
-                              url,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                              loadingBuilder: (context, child, prog) {
-                                if (prog == null) return child;
-                                return const Center(
-                                  child: CircularProgressIndicator(),
-                                );
-                              },
-                              errorBuilder: (context, _, __) => Image.asset(
-                                'assets/images/placeholder.jpg',
-                                fit: BoxFit.cover,
+              PageView.builder(
+                controller: _pageController,
+                physics: const PageScrollPhysics(),
+                itemCount: images.length,
+                onPageChanged: (idx) => setState(() => _pageIndex = idx),
+                itemBuilder: (context, index) {
+                  final url = images[index];
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                    child: Hero(
+                      tag: 'product_${widget.itemId}_$index',
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.08),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
                               ),
+                            ],
+                          ),
+                          child: Image.network(
+                            url,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, prog) {
+                              if (prog == null) return child;
+                              return const Center(child: CircularProgressIndicator());
+                            },
+                            errorBuilder: (context, _, __) => Image.asset(
+                              'assets/images/placeholder.jpg',
+                              fit: BoxFit.cover,
                             ),
                           ),
                         ),
                       ),
-                    );
-                  },
-                  options: CarouselOptions(
-                    viewportFraction: 1.0,
-                    enlargeCenterPage: false,
-                    autoPlay: true,
-                    autoPlayInterval: const Duration(seconds: 4),
-                    autoPlayAnimationDuration: const Duration(
-                      milliseconds: 800,
-                    ),
-                    pauseAutoPlayOnTouch: true,
-                    enableInfiniteScroll: images.length > 1,
-                    onPageChanged: (idx, reason) =>
-                        setState(() => _pageIndex = idx),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(images.length, (i) {
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: _pageIndex == i ? 12 : 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: _pageIndex == i ? Colors.white : Colors.white54,
-                      borderRadius: BorderRadius.circular(6),
                     ),
                   );
-                }),
+                },
               ),
+              leftArrow,
+              rightArrow,
+              dots,
             ],
           ),
         );
@@ -244,6 +373,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       const SnackBar(content: Text('Product link copied to clipboard')),
     );
   }
+
+  // left/right arrow helpers removed; inline arrows are built inside _buildCarousel
 
   @override
   Widget build(BuildContext context) {
