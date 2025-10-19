@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'product_detail_screen.dart';
 
 class MyListScreen extends StatefulWidget {
   const MyListScreen({super.key});
@@ -292,6 +293,17 @@ class _MyListScreenState extends State<MyListScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: ListTile(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ProductDetailScreen(
+                                itemId: itemDoc.id,
+                                itemData: data,
+                              ),
+                            ),
+                          );
+                        },
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 8,

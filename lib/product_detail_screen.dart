@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -18,11 +19,13 @@ class ProductDetailScreen extends StatefulWidget {
   State<ProductDetailScreen> createState() => _ProductDetailScreenState();
 }
 
-class _ProductDetailScreenState extends State<ProductDetailScreen> {
+class _ProductDetailScreenState extends State<ProductDetailScreen>
+    with SingleTickerProviderStateMixin {
   int _pageIndex = 0;
   bool _adding = false;
   bool _added = false;
-  late final PageController _pageController;
+  bool _wishlisted = false;
+  late final TabController _tabController;
 
   List<String> get _images {
     // Prefer `images`, then `imageUrls`, then `imageUrl` fallback.
@@ -71,12 +74,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   void initState() {
     super.initState();
     _checkInCart();
-    _pageController = PageController(initialPage: 0);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
   void dispose() {
-    _pageController.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -145,6 +148,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           );
         }
 
+        // Modern card-like carousel
         return AspectRatio(
           aspectRatio: 16 / 9,
           child: Column(
@@ -156,26 +160,38 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     final url = images[index];
                     return Padding(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 6.0,
-                        vertical: 6.0,
+                        horizontal: 12.0,
+                        vertical: 8.0,
                       ),
                       child: Hero(
                         tag: 'product_${widget.itemId}_$index',
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.network(
-                            url,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            loadingBuilder: (context, child, prog) {
-                              if (prog == null) return child;
-                              return const Center(
-                                child: CircularProgressIndicator(),
-                              );
-                            },
-                            errorBuilder: (context, _, __) => Image.asset(
-                              'assets/images/placeholder.jpg',
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Image.network(
+                              url,
+                              width: double.infinity,
                               fit: BoxFit.cover,
+                              loadingBuilder: (context, child, prog) {
+                                if (prog == null) return child;
+                                return const Center(
+                                  child: CircularProgressIndicator(),
+                                );
+                              },
+                              errorBuilder: (context, _, __) => Image.asset(
+                                'assets/images/placeholder.jpg',
+                                fit: BoxFit.cover,
+                              ),
                             ),
                           ),
                         ),
@@ -201,10 +217,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(images.length, (i) {
-                  return Container(
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
                     margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: _pageIndex == i ? 10 : 6,
-                    height: _pageIndex == i ? 10 : 6,
+                    width: _pageIndex == i ? 12 : 6,
+                    height: 6,
                     decoration: BoxDecoration(
                       color: _pageIndex == i ? Colors.white : Colors.white54,
                       borderRadius: BorderRadius.circular(6),
@@ -219,6 +236,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
+  void _copyShareLink() {
+    final link =
+        widget.itemData['link'] ?? 'https://example.com/item/${widget.itemId}';
+    Clipboard.setData(ClipboardData(text: link));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Product link copied to clipboard')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = widget.itemData;
@@ -227,115 +253,553 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final price = (data['price'] ?? 0).toString();
     final rating = (data['rating'] ?? 0).toString();
     final stock = (data['quantity'] ?? 'N/A').toString();
-    DateTime? expiry;
-    if (data['expiryDate'] != null && data['expiryDate'] is Timestamp)
-      expiry = (data['expiryDate'] as Timestamp).toDate();
+    final sellerRaw =
+        (data['seller'] ??
+                data['userEmail'] ??
+                data['userId'] ??
+                'Resourcely Store')
+            .toString();
+    final seller = sellerRaw.contains('@')
+        ? sellerRaw.split('@')[0]
+        : sellerRaw;
+    final mrp = (data['mrp'] ?? data['price'] ?? 0).toString();
+    final discountPercent = data['discountPercent'] ?? 0;
+    // expiry is displayed in the description tab (if present)
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF7F8FB),
       appBar: AppBar(
-        title: Text(name),
-        backgroundColor: const Color(0xFF507B7B),
+        title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        elevation: 0.5,
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isWide = constraints.maxWidth > 700;
-          return SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: isWide
-                  ? Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(flex: 1, child: _buildCarousel(context)),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          flex: 1,
-                          child: _buildDetails(
-                            name,
-                            desc,
-                            price,
-                            rating,
-                            stock,
-                            expiry,
-                          ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Carousel
+              _buildCarousel(context),
+              const SizedBox(height: 12),
+
+              // Title & badges
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      name,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  if (discountPercent != 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFF6B35), Color(0xFFFF3B30)],
                         ),
-                      ],
-                    )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildCarousel(context),
-                        const SizedBox(height: 12),
-                        _buildDetails(name, desc, price, rating, stock, expiry),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '$discountPercent% OFF',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              // Rating and stock
+              Row(
+                children: [
+                  _buildRatingRow(rating),
+                  const SizedBox(width: 12),
+                  const Spacer(),
+                  Chip(
+                    backgroundColor: stock == '0'
+                        ? Colors.red[50]
+                        : Colors.green[50],
+                    label: Text(stock == '0' ? 'Out of stock' : 'In stock'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              // Price below rating
+              Text(
+                '₹$price',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green,
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (mrp != price)
+                Text(
+                  'MRP: ₹$mrp',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
+                    decoration: TextDecoration.lineThrough,
+                  ),
+                ),
+              const SizedBox(height: 12),
+
+              // Seller info & actions
+              Row(
+                children: [
+                  Expanded(
+                    child: Text.rich(
+                      TextSpan(
+                        text: 'Sold by ',
+                        style: const TextStyle(color: Colors.black54),
+                        children: [
+                          TextSpan(
+                            text: seller,
+                            style: const TextStyle(
+                              color: Colors.black87,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => setState(() => _wishlisted = !_wishlisted),
+                    icon: Icon(
+                      _wishlisted ? Icons.favorite : Icons.favorite_border,
+                      color: _wishlisted ? Colors.red : Colors.black54,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: _copyShareLink,
+                    icon: const Icon(Icons.share, color: Colors.black54),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Add to cart button (no quantity selector, no Buy Now)
+              Row(
+                children: [
+                  Expanded(
+                    child: _adding
+                        ? Container(
+                            height: 46,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[300],
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        : _buildGradientButton(
+                            _added ? 'Added to Cart' : 'Add to Cart',
+                            () async {
+                              if (stock == '0') {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Out of stock')),
+                                );
+                                return;
+                              }
+                              await _addToCart();
+                              if (mounted)
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Added to cart'),
+                                  ),
+                                );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Tabs
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 10,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    TabBar(
+                      controller: _tabController,
+                      labelColor: Colors.black,
+                      unselectedLabelColor: Colors.black54,
+                      indicatorColor: const Color(0xFF507B7B),
+                      tabs: const [
+                        Tab(text: 'Description'),
+                        Tab(text: 'Specifications'),
+                        Tab(text: 'Reviews'),
+                        Tab(text: 'Related'),
                       ],
                     ),
-            ),
-          );
-        },
+                    SizedBox(
+                      height: 360,
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildDescription(desc),
+                          _buildSpecifications(data),
+                          _buildReviews(),
+                          _buildRelatedProducts(),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildDetails(
-    String name,
-    String desc,
-    String price,
-    String rating,
-    String stock,
-    DateTime? expiry,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildRatingRow(String ratingStr) {
+    // Show rating number only (no star icons)
+    return Row(
       children: [
-        Text(
-          name,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          '₹$price',
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF507B7B),
+        Text(ratingStr, style: const TextStyle(fontWeight: FontWeight.w600)),
+      ],
+    );
+  }
+
+  Widget _buildGradientButton(
+    String label,
+    VoidCallback onTap, {
+    bool accent = false,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        height: 46,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: accent
+                ? [Colors.deepOrange, Colors.orange]
+                : [Color(0xFF507B7B), Color(0xFF2F6F6F)],
           ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            const Icon(Icons.star, color: Colors.amber, size: 18),
-            const SizedBox(width: 6),
-            Text(rating),
-            const SizedBox(width: 12),
-            Text('Stock: $stock'),
-            const SizedBox(width: 12),
-            if (expiry != null)
-              Text('Expiry: ${expiry.toLocal().toString().split(' ')[0]}'),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            ),
           ],
         ),
-        const SizedBox(height: 12),
-        Text(desc),
-        const SizedBox(height: 20),
-        Center(
-          child: ElevatedButton(
-            onPressed: _adding || _added ? null : _addToCart,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF507B7B),
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
-            ),
-            child: _adding
-                ? const SizedBox(
-                    height: 16,
-                    width: 16,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                : Text(_added ? 'Added to Cart' : 'Add to Cart'),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
           ),
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildDescription(String desc) {
+    final data = widget.itemData;
+    final category = (data['category'] ?? data['type'] ?? 'N/A').toString();
+    final condition = (data['condition'] ?? 'N/A').toString();
+    final purpose = (data['purpose'] ?? 'N/A').toString();
+    final unit = (data['unit'] ?? 'N/A').toString();
+    final quantity = (data['quantity'] ?? 'N/A').toString();
+    final location = (data['location'] ?? 'N/A').toString();
+    String expiryText = '';
+    if (data['expiryDate'] != null && data['expiryDate'] is Timestamp) {
+      expiryText = (data['expiryDate'] as Timestamp)
+          .toDate()
+          .toLocal()
+          .toString()
+          .split(' ')[0];
+    }
+    final notes = (data['notes'] ?? '').toString();
+
+    return Padding(
+      padding: const EdgeInsets.all(12.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (desc.isNotEmpty) ...[Text(desc), const SizedBox(height: 12)],
+          Text(
+            'Category: $category',
+            style: const TextStyle(color: Colors.black87),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Condition: $condition',
+            style: const TextStyle(color: Colors.black87),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Purpose: $purpose',
+            style: const TextStyle(color: Colors.black87),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Quantity: $quantity',
+            style: const TextStyle(color: Colors.black87),
+          ),
+          const SizedBox(height: 6),
+          Text('Unit: $unit', style: const TextStyle(color: Colors.black87)),
+          const SizedBox(height: 6),
+          Text(
+            'Location: $location',
+            style: const TextStyle(color: Colors.black87),
+          ),
+          if (expiryText.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Expiry: $expiryText',
+              style: const TextStyle(color: Colors.black87),
+            ),
+          ],
+          if (notes.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Text(
+              'Seller notes:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 6),
+            Text(notes),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSpecifications(Map<String, dynamic> data) {
+    final rawSpecs = (data['specs'] as Map<String, dynamic>?) ?? {};
+    final specs = Map<String, dynamic>.from(rawSpecs);
+    // Fallback to a few top-level fields if specs is empty
+    if (specs.isEmpty) {
+      if (data['brand'] != null) specs['Brand'] = data['brand'];
+      if (data['weight'] != null) specs['Weight'] = data['weight'];
+      if (data['dimensions'] != null) specs['Dimensions'] = data['dimensions'];
+      if (data['condition'] != null) specs['Condition'] = data['condition'];
+      if (data['type'] != null) specs['Type'] = data['type'];
+      if (data['category'] != null) specs['Category'] = data['category'];
+    }
+
+    if (specs.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(12.0),
+        child: Text('No specifications available.'),
+      );
+    }
+
+    IconData _iconForKey(String key) {
+      final k = key.toLowerCase();
+      if (k.contains('brand') || k.contains('seller')) return Icons.store;
+      if (k.contains('size')) return Icons.straighten;
+      if (k.contains('color')) return Icons.color_lens;
+      if (k.contains('material')) return Icons.layers;
+      if (k.contains('model') || k.contains('model')) return Icons.devices;
+      if (k.contains('processor') || k.contains('ram') || k.contains('storage'))
+        return Icons.memory;
+      if (k.contains('warranty')) return Icons.shield;
+      if (k.contains('author') || k.contains('publisher')) return Icons.person;
+      if (k.contains('expiry') ||
+          k.contains('expirydate') ||
+          k.contains('expiry date'))
+        return Icons.event;
+      if (k.contains('weight')) return Icons.scale;
+      if (k.contains('battery')) return Icons.battery_full;
+      return Icons.info_outline;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(12.0),
+      child: Column(
+        children: specs.entries.map((e) {
+          final key = e.key.toString();
+          final rawVal = e.value;
+          final value = rawVal is Timestamp
+              ? rawVal.toDate().toLocal().toString().split(' ')[0]
+              : rawVal is DateTime
+              ? rawVal.toLocal().toString().split(' ')[0]
+              : rawVal.toString();
+          return Card(
+            margin: const EdgeInsets.symmetric(vertical: 6),
+            elevation: 1,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundColor: Colors.grey[100],
+                    child: Icon(
+                      _iconForKey(key),
+                      size: 18,
+                      color: Colors.black54,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          key,
+                          style: const TextStyle(color: Colors.black54),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          value,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildReviews() {
+    final List<Map<String, Object>> reviews = [
+      {
+        'name': 'Anita',
+        'rating': 5,
+        'text': 'Great product! Highly recommend.',
+      },
+      {'name': 'Raj', 'rating': 4, 'text': 'Good value for money.'},
+    ];
+    return ListView.separated(
+      padding: const EdgeInsets.all(12),
+      itemCount: reviews.length,
+      physics: const BouncingScrollPhysics(),
+      itemBuilder: (context, i) {
+        final r = reviews[i];
+        final String name = (r['name'] as String?) ?? 'User';
+        final int rating = (r['rating'] as int?) ?? 0;
+        final String text = (r['text'] as String?) ?? '';
+        return ListTile(
+          tileColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          leading: CircleAvatar(child: Text(name.isNotEmpty ? name[0] : '?')),
+          title: Row(
+            children: [
+              Text(name),
+              const SizedBox(width: 8),
+              Row(
+                children: List.generate(
+                  rating,
+                  (i) => const Icon(Icons.star, color: Colors.amber, size: 14),
+                ),
+              ),
+            ],
+          ),
+          subtitle: Text(text),
+        );
+      },
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
+    );
+  }
+
+  Widget _buildRelatedProducts() {
+    final related = List.generate(
+      6,
+      (i) => {'name': 'Related $i', 'price': (100 + i * 20), 'image': null},
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: CarouselSlider.builder(
+        itemCount: related.length,
+        itemBuilder: (context, index, realIdx) {
+          final item = related[index];
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 6),
+            child: Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.image,
+                          size: 48,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      item['name'].toString(),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '₹${(item['price'] ?? 0).toString()}',
+                      style: const TextStyle(
+                        color: Colors.green,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+        options: CarouselOptions(
+          height: 220,
+          enlargeCenterPage: false,
+          enableInfiniteScroll: false,
+          viewportFraction: 0.45,
+        ),
+      ),
     );
   }
 }

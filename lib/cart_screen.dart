@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:groswap/chat_screen.dart';
+import 'product_detail_screen.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -178,338 +179,350 @@ class _CartScreenState extends State<CartScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           margin: const EdgeInsets.symmetric(vertical: 6),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 6,
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // 🖼 Product image
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: displayImages.isNotEmpty
-                                      ? Image.network(
-                                          displayImages.first,
-                                          width: 50,
-                                          height: 50,
-                                          fit: BoxFit.cover,
-                                          errorBuilder:
-                                              (context, error, stackTrace) =>
-                                                  const Icon(
-                                                    Icons.image,
-                                                    color: Colors.grey,
-                                                  ),
-                                        )
-                                      : const Icon(
-                                          Icons.image,
-                                          color: Colors.grey,
-                                          size: 40,
-                                        ),
-                                ),
-                                const SizedBox(width: 10),
-
-                                // 📦 Product info + actions
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        name,
-                                        style: const TextStyle(
-                                          color: Colors.black87,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 14,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      Text(
-                                        '${type.isNotEmpty ? "$type • " : ""}₹$price',
-                                        style: const TextStyle(
-                                          color: Color(0xFF6B6B6B),
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
+                          child: InkWell(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ProductDetailScreen(
+                                    itemId: itemDoc.id,
+                                    itemData: itemData,
                                   ),
                                 ),
-
-                                // 🎛 Trailing actions
-                                ConstrainedBox(
-                                  constraints: const BoxConstraints(
-                                    maxWidth: 120,
+                              );
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 6,
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: displayImages.isNotEmpty
+                                        ? Image.network(
+                                            displayImages.first,
+                                            width: 50,
+                                            height: 50,
+                                            fit: BoxFit.cover,
+                                            errorBuilder:
+                                                (context, error, stackTrace) =>
+                                                    const Icon(
+                                                      Icons.image,
+                                                      color: Colors.grey,
+                                                    ),
+                                          )
+                                        : const Icon(
+                                            Icons.image,
+                                            color: Colors.grey,
+                                            size: 40,
+                                          ),
                                   ),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      // Delete button (remove from cart)
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.delete_outline,
-                                          color: Colors.redAccent,
-                                          size: 18,
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          name,
+                                          style: const TextStyle(
+                                            color: Colors.black87,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(
-                                          minWidth: 28,
-                                          minHeight: 28,
+                                        Text(
+                                          '${type.isNotEmpty ? "$type • " : ""}₹$price',
+                                          style: const TextStyle(
+                                            color: Color(0xFF6B6B6B),
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w500,
+                                          ),
                                         ),
-                                        tooltip: 'Remove from cart',
-                                        onPressed: () async {
-                                          try {
-                                            await FirebaseFirestore.instance
-                                                .collection('cart')
-                                                .doc(cartItem.id)
-                                                .delete();
-                                            if (mounted) {
-                                              ScaffoldMessenger.of(
-                                                context,
-                                              ).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text(
-                                                    'Item removed from cart',
+                                      ],
+                                    ),
+                                  ),
+                                  ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 120,
+                                    ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete_outline,
+                                            color: Colors.redAccent,
+                                            size: 18,
+                                          ),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(
+                                            minWidth: 28,
+                                            minHeight: 28,
+                                          ),
+                                          tooltip: 'Remove from cart',
+                                          onPressed: () async {
+                                            try {
+                                              await FirebaseFirestore.instance
+                                                  .collection('cart')
+                                                  .doc(cartItem.id)
+                                                  .delete();
+                                              if (mounted) {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text(
+                                                      'Item removed from cart',
+                                                    ),
+                                                    backgroundColor: Color(
+                                                      0xFF507B7B,
+                                                    ),
                                                   ),
-                                                  backgroundColor: Color(
-                                                    0xFF507B7B,
+                                                );
+                                              }
+                                            } catch (e) {
+                                              if (mounted) {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                      'Remove failed: $e',
+                                                    ),
                                                   ),
-                                                ),
-                                              );
+                                                );
+                                              }
                                             }
-                                          } catch (e) {
-                                            if (mounted) {
-                                              ScaffoldMessenger.of(
-                                                context,
-                                              ).showSnackBar(
-                                                SnackBar(
-                                                  content: Text(
-                                                    'Remove failed: $e',
-                                                  ),
-                                                ),
-                                              );
-                                            }
-                                          }
-                                        },
-                                      ),
-                                      const SizedBox(height: 4),
-                                      // 🟢 Place Order button
-                                      StreamBuilder<QuerySnapshot>(
-                                        stream: FirebaseFirestore.instance
-                                            .collection('requests')
-                                            .where(
-                                              'requesterId',
-                                              isEqualTo: userId,
-                                            )
-                                            .where(
-                                              'itemId',
-                                              isEqualTo:
-                                                  cartItem['itemId'] ?? '',
-                                            )
-                                            .snapshots(),
-                                        builder: (context, reqSnap) {
-                                          final hasRequest =
-                                              reqSnap.hasData &&
-                                              reqSnap.data!.docs.isNotEmpty;
+                                          },
+                                        ),
+                                        const SizedBox(height: 4),
+                                        // Place Order and status UI remain unchanged below
+                                        StreamBuilder<QuerySnapshot>(
+                                          stream: FirebaseFirestore.instance
+                                              .collection('requests')
+                                              .where(
+                                                'requesterId',
+                                                isEqualTo: userId,
+                                              )
+                                              .where(
+                                                'itemId',
+                                                isEqualTo:
+                                                    cartItem['itemId'] ?? '',
+                                              )
+                                              .snapshots(),
+                                          builder: (context, reqSnap) {
+                                            final hasRequest =
+                                                reqSnap.hasData &&
+                                                reqSnap.data!.docs.isNotEmpty;
 
-                                          return ElevatedButton(
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(
-                                                0xFF507B7B,
+                                            return ElevatedButton(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: const Color(
+                                                  0xFF507B7B,
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4,
+                                                    ),
+                                                minimumSize: const Size(0, 0),
+                                                tapTargetSize:
+                                                    MaterialTapTargetSize
+                                                        .shrinkWrap,
                                               ),
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 8,
-                                                    vertical: 4,
-                                                  ),
-                                              minimumSize: const Size(0, 0),
-                                              tapTargetSize:
-                                                  MaterialTapTargetSize
-                                                      .shrinkWrap,
-                                            ),
-                                            onPressed: hasRequest
-                                                ? null
-                                                : () async {
-                                                    try {
-                                                      final user = FirebaseAuth
-                                                          .instance
-                                                          .currentUser;
-                                                      if (user == null) return;
+                                              onPressed: hasRequest
+                                                  ? null
+                                                  : () async {
+                                                      try {
+                                                        final user =
+                                                            FirebaseAuth
+                                                                .instance
+                                                                .currentUser;
+                                                        if (user == null)
+                                                          return;
 
-                                                      if (ownerId == user.uid) {
+                                                        if (ownerId ==
+                                                            user.uid) {
+                                                          ScaffoldMessenger.of(
+                                                            context,
+                                                          ).showSnackBar(
+                                                            const SnackBar(
+                                                              content: Text(
+                                                                'Cannot order your own item',
+                                                              ),
+                                                            ),
+                                                          );
+                                                          return;
+                                                        }
+
+                                                        final reqRef =
+                                                            FirebaseFirestore
+                                                                .instance
+                                                                .collection(
+                                                                  'requests',
+                                                                );
+                                                        final existing =
+                                                            await reqRef
+                                                                .where(
+                                                                  'itemId',
+                                                                  isEqualTo:
+                                                                      cartItem['itemId'],
+                                                                )
+                                                                .where(
+                                                                  'requesterId',
+                                                                  isEqualTo:
+                                                                      user.uid,
+                                                                )
+                                                                .get();
+
+                                                        if (existing
+                                                            .docs
+                                                            .isNotEmpty) {
+                                                          ScaffoldMessenger.of(
+                                                            context,
+                                                          ).showSnackBar(
+                                                            const SnackBar(
+                                                              content: Text(
+                                                                'Order already exists',
+                                                              ),
+                                                            ),
+                                                          );
+                                                          return;
+                                                        }
+
+                                                        await reqRef.add({
+                                                          'itemId':
+                                                              cartItem['itemId'],
+                                                          'itemName': name,
+                                                          'requesterId':
+                                                              user.uid,
+                                                          'requesterEmail':
+                                                              user.email ?? '',
+                                                          'ownerId': ownerId,
+                                                          'status': 'pending',
+                                                          'timestamp':
+                                                              FieldValue.serverTimestamp(),
+                                                        });
+
                                                         ScaffoldMessenger.of(
                                                           context,
                                                         ).showSnackBar(
                                                           const SnackBar(
                                                             content: Text(
-                                                              'Cannot order your own item',
+                                                              'Order placed successfully',
                                                             ),
                                                           ),
                                                         );
-                                                        return;
-                                                      }
-
-                                                      final reqRef =
-                                                          FirebaseFirestore
-                                                              .instance
-                                                              .collection(
-                                                                'requests',
-                                                              );
-                                                      final existing = await reqRef
-                                                          .where(
-                                                            'itemId',
-                                                            isEqualTo:
-                                                                cartItem['itemId'],
-                                                          )
-                                                          .where(
-                                                            'requesterId',
-                                                            isEqualTo: user.uid,
-                                                          )
-                                                          .get();
-
-                                                      if (existing
-                                                          .docs
-                                                          .isNotEmpty) {
+                                                      } catch (e) {
                                                         ScaffoldMessenger.of(
                                                           context,
                                                         ).showSnackBar(
-                                                          const SnackBar(
+                                                          SnackBar(
                                                             content: Text(
-                                                              'Order already exists',
+                                                              'Order error: $e',
                                                             ),
                                                           ),
                                                         );
-                                                        return;
                                                       }
-
-                                                      await reqRef.add({
-                                                        'itemId':
-                                                            cartItem['itemId'],
-                                                        'itemName': name,
-                                                        'requesterId': user.uid,
-                                                        'requesterEmail':
-                                                            user.email ?? '',
-                                                        'ownerId': ownerId,
-                                                        'status': 'pending',
-                                                        'timestamp':
-                                                            FieldValue.serverTimestamp(),
-                                                      });
-
-                                                      ScaffoldMessenger.of(
-                                                        context,
-                                                      ).showSnackBar(
-                                                        const SnackBar(
-                                                          content: Text(
-                                                            'Order placed successfully',
-                                                          ),
-                                                        ),
-                                                      );
-                                                    } catch (e) {
-                                                      ScaffoldMessenger.of(
-                                                        context,
-                                                      ).showSnackBar(
-                                                        SnackBar(
-                                                          content: Text(
-                                                            'Order error: $e',
-                                                          ),
-                                                        ),
-                                                      );
-                                                    }
-                                                  },
-                                            child: const Text(
-                                              'Place Order',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 10,
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                      const SizedBox(height: 6),
-
-                                      // 🟠 Order Status + icons
-                                      StreamBuilder<QuerySnapshot>(
-                                        stream: FirebaseFirestore.instance
-                                            .collection('requests')
-                                            .where(
-                                              'requesterId',
-                                              isEqualTo: userId,
-                                            )
-                                            .where(
-                                              'itemId',
-                                              isEqualTo:
-                                                  cartItem['itemId'] ?? '',
-                                            )
-                                            .snapshots(),
-                                        builder: (context, rs) {
-                                          if (!rs.hasData ||
-                                              rs.data!.docs.isEmpty) {
-                                            return const SizedBox.shrink();
-                                          }
-
-                                          final r = rs.data!.docs.first;
-                                          final st = (r['status'] ?? 'pending')
-                                              .toString();
-                                          String label;
-                                          Color color;
-
-                                          switch (st) {
-                                            case 'accepted':
-                                              label = '🟢 Accepted';
-                                              color = Colors.green;
-                                              break;
-                                            case 'rejected':
-                                              label = '🔴 Rejected';
-                                              color = Colors.red;
-                                              break;
-                                            default:
-                                              label = '🟡 Pending';
-                                              color = Colors.orange;
-                                          }
-
-                                          return Wrap(
-                                            crossAxisAlignment:
-                                                WrapCrossAlignment.center,
-                                            spacing: 3,
-                                            runSpacing: 3,
-                                            children: [
-                                              Text(
-                                                label,
+                                                    },
+                                              child: const Text(
+                                                'Place Order',
                                                 style: TextStyle(
-                                                  color: color,
+                                                  color: Colors.white,
                                                   fontSize: 10,
-                                                  fontWeight: FontWeight.w600,
                                                 ),
                                               ),
-                                              if (st == 'accepted')
-                                                FutureBuilder<
-                                                  DocumentSnapshot?
-                                                >(
-                                                  future: FirebaseFirestore
-                                                      .instance
-                                                      .collection('users')
-                                                      .doc(ownerId)
-                                                      .get(),
-                                                  builder: (context, ownerSnap) {
-                                                    final ownerData =
-                                                        ownerSnap.data?.data()
-                                                            as Map<
-                                                              String,
-                                                              dynamic
-                                                            >?;
+                                            );
+                                          },
+                                        ),
+                                        const SizedBox(height: 6),
+                                        StreamBuilder<QuerySnapshot>(
+                                          stream: FirebaseFirestore.instance
+                                              .collection('requests')
+                                              .where(
+                                                'requesterId',
+                                                isEqualTo: userId,
+                                              )
+                                              .where(
+                                                'itemId',
+                                                isEqualTo:
+                                                    cartItem['itemId'] ?? '',
+                                              )
+                                              .snapshots(),
+                                          builder: (context, rs) {
+                                            if (!rs.hasData ||
+                                                rs.data!.docs.isEmpty) {
+                                              return const SizedBox.shrink();
+                                            }
 
-                                                    final ownerPhone =
-                                                        (ownerData?['phone'] ??
-                                                                '')
-                                                            .toString();
-                                                    final ownerName =
-                                                        (ownerData?['name'] ??
-                                                                ownerId)
-                                                            .toString();
+                                            final r = rs.data!.docs.first;
+                                            final st =
+                                                (r['status'] ?? 'pending')
+                                                    .toString();
+                                            String label;
+                                            Color color;
+
+                                            switch (st) {
+                                              case 'accepted':
+                                                label = '🟢 Accepted';
+                                                color = Colors.green;
+                                                break;
+                                              case 'rejected':
+                                                label = '🔴 Rejected';
+                                                color = Colors.red;
+                                                break;
+                                              default:
+                                                label = '🟡 Pending';
+                                                color = Colors.orange;
+                                            }
+
+                                            return Wrap(
+                                              crossAxisAlignment:
+                                                  WrapCrossAlignment.center,
+                                              spacing: 3,
+                                              runSpacing: 3,
+                                              children: [
+                                                Text(
+                                                  label,
+                                                  style: TextStyle(
+                                                    color: color,
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                                if (st == 'accepted')
+                                                  FutureBuilder<
+                                                    DocumentSnapshot?
+                                                  >(
+                                                    future: FirebaseFirestore
+                                                        .instance
+                                                        .collection('users')
+                                                        .doc(ownerId)
+                                                        .get(),
+                                                    builder: (context, ownerSnap) {
+                                                      final ownerData =
+                                                          ownerSnap.data?.data()
+                                                              as Map<
+                                                                String,
+                                                                dynamic
+                                                              >?;
+
+                                                      final ownerPhone =
+                                                          (ownerData?['phone'] ??
+                                                                  '')
+                                                              .toString();
+                                                      final ownerName =
+                                                          (ownerData?['name'] ??
+                                                                  ownerId)
+                                                              .toString();
 
                                                     return Row(
                                                       mainAxisSize:
@@ -572,9 +585,6 @@ class _CartScreenState extends State<CartScreen> {
                                                                       ownerId,
                                                                   otherUserName:
                                                                       ownerName,
-                                                                  itemId:
-                                                                      cartItem['itemId'] ??
-                                                                      '',
                                                                 ),
                                                               ),
                                                             );
