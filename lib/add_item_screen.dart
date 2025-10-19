@@ -25,41 +25,41 @@ class _AddItemScreenState extends State<AddItemScreen> {
   final _quantityController = TextEditingController();
   final _unitController = TextEditingController();
   final _locationController = TextEditingController();
-  LatLng? _pickedLocation; // lat/lng selected via map or auto-location
+  LatLng? _pickedLocation;
   final _notesController = TextEditingController();
+
+  // Rent-specific controllers
+  final _rentalPriceController = TextEditingController();
+  final _depositController = TextEditingController();
+  final _minDurationController = TextEditingController();
+  final _maxDurationController = TextEditingController();
+  DateTime? _rentalStartDate;
+  DateTime? _rentalEndDate;
+  String selectedDurationUnit = 'Days';
 
   String selectedCategory = 'Grocery';
   String selectedCondition = 'New';
   String selectedPurpose = 'Sell';
   DateTime? _selectedExpiryDate;
-  // Multiple image support
+
   List<File> _selectedImages = [];
-  List<String> _uploadedImageUrls = []; // Store uploaded Cloudinary URLs
+  List<String> _uploadedImageUrls = [];
   bool _isLoading = false;
-  bool _isUploadingImage = false; // Track image upload state
+  bool _isUploadingImage = false;
   Map<String, dynamic>? _specs;
 
-  // Cloudinary setup
   final cloudinary = CloudinaryPublic(
-    'dsq93kxoa', // Your Cloudinary cloud name
-    'resourcely_unsigned', // Your upload preset
+    'dsq93kxoa',
+    'resourcely_unsigned',
     cache: false,
   );
 
-  // Pick multiple images from gallery and upload each to Cloudinary
+  // Image pickers & upload
   Future<void> _pickImages() async {
     try {
-      // Request storage permission for Android
       if (Platform.isAndroid) {
         PermissionStatus status = await Permission.storage.request();
-        if (!status.isGranted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Permission denied to access storage'),
-            ),
-          );
-          return;
-        }
+        if (!status.isGranted) return;
       }
 
       final pickedFiles = await ImagePicker().pickMultiImage(
@@ -67,7 +67,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
         maxHeight: 1200,
         imageQuality: 80,
       );
-
       if (pickedFiles.isEmpty) return;
 
       setState(() => _isUploadingImage = true);
@@ -75,35 +74,23 @@ class _AddItemScreenState extends State<AddItemScreen> {
       for (final picked in pickedFiles) {
         final file = File(picked.path);
         if (!file.existsSync()) continue;
-        // add to preview list immediately
         setState(() => _selectedImages.add(file));
-        // upload and collect URL
         final url = await _uploadToCloudinary(file);
         if (url != null) setState(() => _uploadedImageUrls.add(url));
       }
 
       setState(() => _isUploadingImage = false);
     } catch (e) {
-      if (mounted)
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error picking images: $e')));
       setState(() => _isUploadingImage = false);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error picking images: $e')));
     }
   }
 
-  // Take a photo using the device camera and upload it
   Future<void> _takePhoto() async {
     try {
-      // Request camera permission for Android
       if (Platform.isAndroid) {
         PermissionStatus camStatus = await Permission.camera.request();
-        if (!camStatus.isGranted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Camera permission denied')),
-          );
-          return;
-        }
+        if (!camStatus.isGranted) return;
       }
 
       final picked = await ImagePicker().pickImage(
@@ -112,72 +99,41 @@ class _AddItemScreenState extends State<AddItemScreen> {
         maxHeight: 1200,
         imageQuality: 80,
       );
-
-      // User cancelled
       if (picked == null) return;
 
       setState(() => _isUploadingImage = true);
-
       final file = File(picked.path);
-      if (!file.existsSync()) {
-        setState(() => _isUploadingImage = false);
-        return;
-      }
+      if (!file.existsSync()) return;
 
-      // add to preview immediately
       setState(() => _selectedImages.add(file));
-
       final url = await _uploadToCloudinary(file);
       if (url != null) setState(() => _uploadedImageUrls.add(url));
-
       setState(() => _isUploadingImage = false);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error taking photo: $e')));
-      }
       setState(() => _isUploadingImage = false);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error taking photo: $e')));
     }
   }
 
-  // Upload image to Cloudinary and return secure URL (or null)
   Future<String?> _uploadToCloudinary(File imageFile) async {
     try {
       final response = await cloudinary.uploadFile(
         CloudinaryFile.fromFile(imageFile.path, folder: 'resourcely_items'),
       );
-      if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('\u2705 Image uploaded'),
-            backgroundColor: Color(0xFF507B7B),
-            duration: Duration(seconds: 1),
-          ),
-        );
       return response.secureUrl;
     } catch (e) {
-      if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to upload image: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to upload image: $e')));
       return null;
     }
   }
 
   void _removeImageAt(int index) {
     setState(() {
-      if (index >= 0 && index < _selectedImages.length)
-        _selectedImages.removeAt(index);
-      if (index >= 0 && index < _uploadedImageUrls.length)
-        _uploadedImageUrls.removeAt(index);
+      if (index >= 0 && index < _selectedImages.length) _selectedImages.removeAt(index);
+      if (index >= 0 && index < _uploadedImageUrls.length) _uploadedImageUrls.removeAt(index);
     });
   }
 
-  // Pick expiry date for grocery items
   Future<void> _pickExpiryDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -188,26 +144,34 @@ class _AddItemScreenState extends State<AddItemScreen> {
     if (picked != null) setState(() => _selectedExpiryDate = picked);
   }
 
-  // Save item to Firestore with the uploaded image URL
+  Future<void> _pickRentalStartDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) setState(() => _rentalStartDate = picked);
+  }
+
+  Future<void> _pickRentalEndDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _rentalStartDate ?? DateTime.now(),
+      firstDate: _rentalStartDate ?? DateTime.now(),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) setState(() => _rentalEndDate = picked);
+  }
+
   Future<void> _saveItem() async {
     if (!_formKey.currentState!.validate()) return;
-
-    // Check if image is still uploading
-    if (_isUploadingImage) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please wait for image upload to complete'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
+    if (_isUploadingImage) return;
 
     setState(() => _isLoading = true);
 
     try {
       final user = FirebaseAuth.instance.currentUser!;
-
       final data = {
         'userId': user.uid,
         'userEmail': user.email,
@@ -221,30 +185,33 @@ class _AddItemScreenState extends State<AddItemScreen> {
         'location': _locationController.text.trim(),
         'notes': _notesController.text.trim(),
         'specs': _specs ?? {},
-        // Save array of image URLs and keep a single-image fallback for older code
         'imageUrls': _uploadedImageUrls,
-        'imageUrl': _uploadedImageUrls.isNotEmpty
-            ? _uploadedImageUrls.first
-            : '',
+        'imageUrl': _uploadedImageUrls.isNotEmpty ? _uploadedImageUrls.first : '',
         'timestamp': FieldValue.serverTimestamp(),
       };
 
       if (_pickedLocation != null) {
-        data['locationGeoPoint'] = GeoPoint(
-          _pickedLocation!.latitude,
-          _pickedLocation!.longitude,
-        );
+        data['locationGeoPoint'] = GeoPoint(_pickedLocation!.latitude, _pickedLocation!.longitude);
       }
 
       if (selectedCategory == 'Grocery' && _selectedExpiryDate != null) {
         data['expiryDate'] = Timestamp.fromDate(_selectedExpiryDate!);
       }
 
-      final docRef = await FirebaseFirestore.instance
-          .collection('items')
-          .add(data);
+      // Rent-specific data
+      if (selectedPurpose == 'Rent') {
+        data.addAll({
+          'rentalPrice': double.tryParse(_rentalPriceController.text.trim()) ?? 0,
+          'deposit': double.tryParse(_depositController.text.trim()) ?? 0,
+          'minDuration': int.tryParse(_minDurationController.text.trim()) ?? 0,
+          'maxDuration': int.tryParse(_maxDurationController.text.trim()) ?? 0,
+          'durationUnit': selectedDurationUnit,
+          'rentalStartDate': _rentalStartDate != null ? Timestamp.fromDate(_rentalStartDate!) : null,
+          'rentalEndDate': _rentalEndDate != null ? Timestamp.fromDate(_rentalEndDate!) : null,
+        });
+      }
 
-      // Add item to 'mylist'
+      final docRef = await FirebaseFirestore.instance.collection('items').add(data);
       await FirebaseFirestore.instance.collection('mylist').add({
         'userId': user.uid,
         'itemId': docRef.id,
@@ -253,17 +220,12 @@ class _AddItemScreenState extends State<AddItemScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Item added successfully!'),
-            backgroundColor: Color(0xFF507B7B),
-          ),
+          const SnackBar(content: Text('✅ Item added successfully!'), backgroundColor: Color(0xFF507B7B)),
         );
         Navigator.pop(context);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
     } finally {
       setState(() => _isLoading = false);
     }
@@ -277,6 +239,10 @@ class _AddItemScreenState extends State<AddItemScreen> {
     _unitController.dispose();
     _locationController.dispose();
     _notesController.dispose();
+    _rentalPriceController.dispose();
+    _depositController.dispose();
+    _minDurationController.dispose();
+    _maxDurationController.dispose();
     super.dispose();
   }
 
@@ -309,31 +275,22 @@ class _AddItemScreenState extends State<AddItemScreen> {
                             ? ListView.separated(
                                 scrollDirection: Axis.horizontal,
                                 itemCount: _selectedImages.length,
-                                separatorBuilder: (_, __) =>
-                                    const SizedBox(width: 8),
+                                separatorBuilder: (_, __) => const SizedBox(width: 8),
                                 itemBuilder: (context, idx) {
                                   final f = _selectedImages[idx];
-                                  final uploaded =
-                                      idx < _uploadedImageUrls.length;
+                                  final uploaded = idx < _uploadedImageUrls.length;
                                   return Stack(
                                     children: [
                                       ClipRRect(
                                         borderRadius: BorderRadius.circular(8),
-                                        child: Image.file(
-                                          f,
-                                          width: 160,
-                                          height: 160,
-                                          fit: BoxFit.cover,
-                                        ),
+                                        child: Image.file(f, width: 160, height: 160, fit: BoxFit.cover),
                                       ),
                                       if (!uploaded && _isUploadingImage)
                                         Positioned.fill(
                                           child: Container(
                                             color: Colors.black45,
                                             child: const Center(
-                                              child: CircularProgressIndicator(
-                                                color: Colors.white,
-                                              ),
+                                              child: CircularProgressIndicator(color: Colors.white),
                                             ),
                                           ),
                                         ),
@@ -344,11 +301,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                                           onTap: () => _removeImageAt(idx),
                                           child: const CircleAvatar(
                                             backgroundColor: Colors.red,
-                                            child: Icon(
-                                              Icons.close,
-                                              color: Colors.white,
-                                              size: 18,
-                                            ),
+                                            child: Icon(Icons.close, color: Colors.white, size: 18),
                                           ),
                                         ),
                                       ),
@@ -364,16 +317,10 @@ class _AddItemScreenState extends State<AddItemScreen> {
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: Colors.grey.shade300,
-                                    ),
+                                    border: Border.all(color: Colors.grey.shade300),
                                   ),
                                   child: const Center(
-                                    child: Icon(
-                                      Icons.add_a_photo,
-                                      size: 50,
-                                      color: Colors.grey,
-                                    ),
+                                    child: Icon(Icons.add_a_photo, size: 50, color: Colors.grey),
                                   ),
                                 ),
                               ),
@@ -387,31 +334,19 @@ class _AddItemScreenState extends State<AddItemScreen> {
                             onPressed: _isUploadingImage ? null : _pickImages,
                             icon: const Icon(Icons.add),
                             label: const Text('Add Photos'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF507B7B),
-                            ),
+                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF507B7B)),
                           ),
                           ElevatedButton.icon(
                             onPressed: _isUploadingImage ? null : _takePhoto,
                             icon: const Icon(Icons.camera_alt),
                             label: const Text('Take Photo'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF507B7B),
-                            ),
+                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF507B7B)),
                           ),
-                          if (_isUploadingImage)
-                            const Text(
-                              'Uploading...',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          if (!_isUploadingImage &&
-                              _uploadedImageUrls.isNotEmpty)
+                          if (_isUploadingImage) const Text('Uploading...', style: TextStyle(color: Colors.white)),
+                          if (!_isUploadingImage && _uploadedImageUrls.isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.only(left: 8.0),
-                              child: Text(
-                                '${_uploadedImageUrls.length} uploaded',
-                                style: const TextStyle(color: Colors.white),
-                              ),
+                              child: Text('${_uploadedImageUrls.length} uploaded', style: const TextStyle(color: Colors.white)),
                             ),
                         ],
                       ),
@@ -421,31 +356,14 @@ class _AddItemScreenState extends State<AddItemScreen> {
                 const SizedBox(height: 16),
                 _buildTextField(_nameController, "Item Name", Icons.label),
                 const SizedBox(height: 12),
-                _buildTextField(
-                  _priceController,
-                  "Price",
-                  Icons.attach_money,
-                  inputType: TextInputType.number,
-                ),
+                _buildTextField(_priceController, "Price", Icons.attach_money, inputType: TextInputType.number),
                 const SizedBox(height: 12),
                 _buildDropdown(
                   label: "Category",
                   icon: Icons.category,
                   value: selectedCategory,
-                  items: [
-                    'Grocery',
-                    'Gadgets',
-                    'Stationery',
-                    'Books',
-                    'Electronics',
-                    'Clothing',
-                  ],
-                  onChanged: (v) {
-                    setState(() {
-                      selectedCategory = v!;
-                      _selectedExpiryDate = null;
-                    });
-                  },
+                  items: ['Grocery','Gadgets','Stationery','Books','Electronics','Clothing'],
+                  onChanged: (v) => setState(() { selectedCategory = v!; _selectedExpiryDate = null; }),
                 ),
                 const SizedBox(height: 12),
                 _buildDropdown(
@@ -466,29 +384,13 @@ class _AddItemScreenState extends State<AddItemScreen> {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(
-                      child: _buildTextField(
-                        _quantityController,
-                        "Quantity",
-                        Icons.numbers,
-                      ),
-                    ),
+                    Expanded(child: _buildTextField(_quantityController, "Quantity", Icons.numbers)),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: _buildTextField(
-                        _unitController,
-                        "Unit (kg, pcs...)",
-                        Icons.scale,
-                      ),
-                    ),
+                    Expanded(child: _buildTextField(_unitController, "Unit (kg, pcs...)", Icons.scale)),
                   ],
                 ),
                 const SizedBox(height: 12),
-                _buildTextField(
-                  _locationController,
-                  "Location (optional)",
-                  Icons.location_on_outlined,
-                ),
+                _buildTextField(_locationController, "Location (optional)", Icons.location_on_outlined),
                 const SizedBox(height: 8),
                 Row(
                   children: [
@@ -497,9 +399,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                         onPressed: _useCurrentLocation,
                         icon: const Icon(Icons.my_location),
                         label: const Text('Use current location'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF507B7B),
-                        ),
+                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF507B7B)),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -508,64 +408,92 @@ class _AddItemScreenState extends State<AddItemScreen> {
                         onPressed: _pickLocationOnMap,
                         icon: const Icon(Icons.map),
                         label: const Text('Pick on map'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF507B7B),
-                        ),
+                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF507B7B)),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                _buildTextField(
-                  _notesController,
-                  "Notes (optional)",
-                  Icons.notes,
-                  maxLines: 2,
-                ),
-                const SizedBox(height: 12),
+                _buildTextField(_notesController, "Notes (optional)", Icons.notes, maxLines: 2),
+
+                // Grocery expiry date
                 if (selectedCategory == 'Grocery')
                   Center(
                     child: ElevatedButton.icon(
                       onPressed: _pickExpiryDate,
                       icon: const Icon(Icons.date_range),
-                      label: Text(
-                        _selectedExpiryDate == null
-                            ? 'Select Expiry Date'
-                            : 'Expiry: ${_selectedExpiryDate!.toLocal().toString().split(' ')[0]}',
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF507B7B),
-                      ),
+                      label: Text(_selectedExpiryDate == null
+                          ? 'Select Expiry Date'
+                          : 'Expiry: ${_selectedExpiryDate!.toLocal().toString().split(' ')[0]}'),
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF507B7B)),
                     ),
                   ),
+
+                // Rent-specific fields
+                if (selectedPurpose == 'Rent') ...[
+                  const SizedBox(height: 12),
+                  _buildTextField(_rentalPriceController, "Rental Price", Icons.attach_money, inputType: TextInputType.number),
+                  const SizedBox(height: 12),
+                  _buildTextField(_depositController, "Deposit / Security Fee (Optional)", Icons.money_off, inputType: TextInputType.number),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(child: _buildTextField(_minDurationController, "Min Duration", Icons.timelapse, inputType: TextInputType.number)),
+                      const SizedBox(width: 8),
+                      Expanded(child: _buildTextField(_maxDurationController, "Max Duration", Icons.timelapse_outlined, inputType: TextInputType.number)),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _buildDropdown(
+                    label: "Duration Unit",
+                    icon: Icons.access_time,
+                    value: selectedDurationUnit,
+                    items: ['Days', 'Weeks', 'Months'],
+                    onChanged: (v) => setState(() => selectedDurationUnit = v!),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _pickRentalStartDate,
+                          icon: const Icon(Icons.date_range),
+                          label: Text(_rentalStartDate == null
+                              ? 'Rental Start Date'
+                              : '${_rentalStartDate!.toLocal().toString().split(' ')[0]}'),
+                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF507B7B)),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _pickRentalEndDate,
+                          icon: const Icon(Icons.date_range),
+                          label: Text(_rentalEndDate == null
+                              ? 'Rental End Date'
+                              : '${_rentalEndDate!.toLocal().toString().split(' ')[0]}'),
+                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF507B7B)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+
                 const SizedBox(height: 20),
                 Row(
                   children: [
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () async {
-                          // open specifications page and pass category + condition
                           final specs = await Navigator.pushNamed(
                             context,
                             '/specs',
-                            arguments: {
-                              'category': selectedCategory,
-                              'condition': selectedCondition,
-                            },
+                            arguments: {'category': selectedCategory, 'condition': selectedCondition},
                           );
-                          if (specs != null && specs is Map<String, dynamic>) {
-                            setState(() => _specs = specs);
-                          }
+                          if (specs != null && specs is Map<String, dynamic>) setState(() => _specs = specs);
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF507B7B),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        child: Text(
-                          _specs == null
-                              ? 'Add Specifications'
-                              : 'Edit Specifications',
-                        ),
+                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF507B7B), padding: const EdgeInsets.symmetric(vertical: 14)),
+                        child: Text(_specs == null ? 'Add Specifications' : 'Edit Specifications'),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -574,19 +502,8 @@ class _AddItemScreenState extends State<AddItemScreen> {
                           ? const CircularProgressIndicator(color: Colors.teal)
                           : ElevatedButton(
                               onPressed: _saveItem,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF507B7B),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
-                              ),
-                              child: const Text(
-                                "Save Item",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.white,
-                                ),
-                              ),
+                              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF507B7B), padding: const EdgeInsets.symmetric(vertical: 14)),
+                              child: const Text("Save Item", style: TextStyle(fontSize: 16, color: Colors.white)),
                             ),
                     ),
                   ],
@@ -622,8 +539,8 @@ class _AddItemScreenState extends State<AddItemScreen> {
       validator: (v) => (v == null || v.isEmpty) && label.contains("optional")
           ? null
           : (v == null || v.isEmpty)
-          ? 'Enter $label'
-          : null,
+              ? 'Enter $label'
+              : null,
     );
   }
 
@@ -647,12 +564,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
       ),
       items: items
-          .map(
-            (c) => DropdownMenuItem(
-              value: c,
-              child: Text(c, style: const TextStyle(color: Colors.black87)),
-            ),
-          )
+          .map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(color: Colors.black87))))
           .toList(),
       onChanged: onChanged,
     );
@@ -660,58 +572,26 @@ class _AddItemScreenState extends State<AddItemScreen> {
 
   Future<void> _useCurrentLocation() async {
     try {
-      if (!await Geolocator.isLocationServiceEnabled()) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Enable location services')),
-        );
-        return;
-      }
+      if (!await Geolocator.isLocationServiceEnabled()) return;
       LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) return;
-      }
-      if (permission == LocationPermission.deniedForever) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Location permission denied')),
-        );
-        return;
-      }
+      if (permission == LocationPermission.denied) permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) return;
 
-      final pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
+      final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
       setState(() {
         _pickedLocation = LatLng(pos.latitude, pos.longitude);
-        _locationController.text =
-            '${pos.latitude.toStringAsFixed(6)}, ${pos.longitude.toStringAsFixed(6)}';
+        _locationController.text = '${pos.latitude.toStringAsFixed(6)}, ${pos.longitude.toStringAsFixed(6)}';
       });
-    } catch (e) {
-      if (mounted)
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Location error: $e')));
-    }
+    } catch (_) {}
   }
 
   Future<void> _pickLocationOnMap() async {
-    try {
-      final picked = await Navigator.push<LatLng?>(
-        context,
-        MaterialPageRoute(builder: (_) => const MapPickerScreen()),
-      );
-      if (picked != null) {
-        setState(() {
-          _pickedLocation = picked;
-          _locationController.text =
-              '${picked.latitude.toStringAsFixed(6)}, ${picked.longitude.toStringAsFixed(6)}';
-        });
-      }
-    } catch (e) {
-      if (mounted)
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Map pick error: $e')));
+    final picked = await Navigator.push<LatLng?>(context, MaterialPageRoute(builder: (_) => const MapPickerScreen()));
+    if (picked != null) {
+      setState(() {
+        _pickedLocation = picked;
+        _locationController.text = '${picked.latitude.toStringAsFixed(6)}, ${picked.longitude.toStringAsFixed(6)}';
+      });
     }
   }
 }
