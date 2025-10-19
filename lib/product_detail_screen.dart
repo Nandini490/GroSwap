@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:carousel_slider/carousel_slider.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final String itemId;
@@ -42,6 +43,28 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final fallback = (widget.itemData['imageUrl'] ?? '').toString();
     if (fallback.isNotEmpty) return [fallback];
     return [];
+  }
+
+  // If itemData didn't contain imageUrls, try fetching the latest from Firestore
+  // (useful if the detail screen was opened with stale/minimal data).
+  Future<List<String>> _fetchImageUrlsFromFirestore() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('items')
+          .doc(widget.itemId)
+          .get();
+      if (!doc.exists) return [];
+      final data = doc.data();
+      if (data == null) return [];
+      final list = ((data['imageUrls'] as List<dynamic>?) ?? <dynamic>[])
+          .map((e) => e.toString())
+          .where((s) => s.isNotEmpty)
+          .toList();
+      return list;
+    } catch (e) {
+      if (kDebugMode) print('image fetch error: $e');
+      return [];
+    }
   }
 
   @override
@@ -99,72 +122,100 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Widget _buildCarousel(BuildContext context) {
-    final images = _images;
-    if (images.isEmpty) {
-      return AspectRatio(
-        aspectRatio: 16 / 9,
-        child: Image.asset('assets/images/placeholder.jpg', fit: BoxFit.cover),
-      );
-    }
+    // Use FutureBuilder so we can fall back to fetching from Firestore if
+    // the provided itemData didn't include images.
+    return FutureBuilder<List<String>>(
+      future: Future.value(_images).then((local) async {
+        if (local.isNotEmpty) return local;
+        return await _fetchImageUrlsFromFirestore();
+      }),
+      builder: (context, snap) {
+        final images = snap.data ?? [];
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
 
-    return AspectRatio(
-      aspectRatio: 16 / 9,
-      child: Stack(
-        children: [
-          PageView.builder(
-            controller: _pageController,
-            itemCount: images.length,
-            physics: kIsWeb
-                ? const ClampingScrollPhysics()
-                : const BouncingScrollPhysics(),
-            onPageChanged: (i) => setState(() => _pageIndex = i),
-            itemBuilder: (context, i) {
-              final url = images[i];
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                child: Hero(
-                  tag: 'product_${widget.itemId}_$i',
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      url,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      loadingBuilder: (context, child, prog) {
-                        if (prog == null) return child;
-                        return const Center(child: CircularProgressIndicator());
-                      },
-                      errorBuilder: (context, _, __) => Image.asset(
-                        'assets/images/placeholder.jpg',
-                        fit: BoxFit.cover,
+        if (images.isEmpty) {
+          return const AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Center(child: Text('No images available')),
+          );
+        }
+
+        return AspectRatio(
+          aspectRatio: 16 / 9,
+          child: Column(
+            children: [
+              Expanded(
+                child: CarouselSlider.builder(
+                  itemCount: images.length,
+                  itemBuilder: (context, index, realIdx) {
+                    final url = images[index];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6.0,
+                        vertical: 6.0,
                       ),
+                      child: Hero(
+                        tag: 'product_${widget.itemId}_$index',
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            url,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, prog) {
+                              if (prog == null) return child;
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            },
+                            errorBuilder: (context, _, __) => Image.asset(
+                              'assets/images/placeholder.jpg',
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  options: CarouselOptions(
+                    viewportFraction: 1.0,
+                    enlargeCenterPage: false,
+                    autoPlay: true,
+                    autoPlayInterval: const Duration(seconds: 4),
+                    autoPlayAnimationDuration: const Duration(
+                      milliseconds: 800,
                     ),
+                    pauseAutoPlayOnTouch: true,
+                    enableInfiniteScroll: images.length > 1,
+                    onPageChanged: (idx, reason) =>
+                        setState(() => _pageIndex = idx),
                   ),
                 ),
-              );
-            },
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(images.length, (i) {
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    width: _pageIndex == i ? 10 : 6,
+                    height: _pageIndex == i ? 10 : 6,
+                    decoration: BoxDecoration(
+                      color: _pageIndex == i ? Colors.white : Colors.white54,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  );
+                }),
+              ),
+            ],
           ),
-          Positioned(
-            bottom: 8,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(images.length, (i) {
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  width: _pageIndex == i ? 10 : 6,
-                  height: _pageIndex == i ? 10 : 6,
-                  decoration: BoxDecoration(
-                    color: _pageIndex == i ? Colors.white : Colors.white54,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                );
-              }),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
