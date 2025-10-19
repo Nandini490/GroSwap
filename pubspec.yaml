@@ -42,6 +42,8 @@ dependencies:
   # Notifications
   flutter_local_notifications: ^17.2.3
   timezone: 0.9.4
+  # Carousel for product images
+  carousel_slider: ^5.1.1
 
 dev_dependencies:
   flutter_test:
