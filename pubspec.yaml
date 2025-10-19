@@ -5,7 +5,7 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: ">=3.8.0 <4.0.0"
+  sdk: '>=3.8.0 <4.0.0'
 
 dependencies:
   flutter:
@@ -29,8 +29,9 @@ dependencies:
   # UI + Icons
   cupertino_icons: ^1.0.8
 
-  # Image picker (modern version)
+  # Image picker
   image_picker: ^0.8.7+4
+
   # Open phone dialer / URLs
   url_launcher: ^6.1.11
 
@@ -41,9 +42,13 @@ dependencies:
 
   # Notifications
   flutter_local_notifications: ^17.2.3
-  timezone: 0.9.4
+  timezone: ^0.9.4
+
   # Carousel for product images
   carousel_slider: ^5.1.1
+
+  # Date formatting
+  intl: ^0.18.1
 
 dev_dependencies:
   flutter_test:

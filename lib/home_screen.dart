@@ -13,6 +13,7 @@ import 'wishlist_screen.dart';
 import 'requests_screen.dart';
 import 'product_detail_screen.dart';
 import 'requesting_for_item_page.dart';
+import 'messages_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -45,12 +46,6 @@ class _HomeScreenState extends State<HomeScreen> {
     'Price: High → Low',
     'Expiry: Soonest First',
   ];
-
-  void _onBottomNavTap(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
 
   @override
   void initState() {
@@ -87,24 +82,20 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   double _distanceMeters(double lat1, double lon1, double lat2, double lon2) {
-    // Haversine
     const R = 6371000; // meters
     final dLat = _deg2rad(lat2 - lat1);
     final dLon = _deg2rad(lon2 - lon1);
     final a =
         (sin(dLat / 2) * sin(dLat / 2)) +
-        cos(_deg2rad(lat1)) *
-            cos(_deg2rad(lat2)) *
-            (sin(dLon / 2) * sin(dLon / 2));
+        cos(_deg2rad(lat1)) * cos(_deg2rad(lat2)) * (sin(dLon / 2) * sin(dLon / 2));
     final c = 2 * atan2(sqrt(a), sqrt(1 - a));
     return R * c;
   }
 
-  double _deg2rad(double deg) => deg * (3.14159265358979323846 / 180.0);
+  double _deg2rad(double deg) => deg * (pi / 180.0);
 
   Widget _buildHomeContent() {
     final userId = FirebaseAuth.instance.currentUser!.uid;
-
     Query<Map<String, dynamic>> itemsQuery = FirebaseFirestore.instance
         .collection('items')
         .orderBy('timestamp', descending: true);
@@ -140,10 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 controller: _searchController,
                 decoration: InputDecoration(
                   hintText: 'Search items...',
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    color: Color(0xFF507B7B),
-                  ),
+                  prefixIcon: const Icon(Icons.search, color: Color(0xFF507B7B)),
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(
@@ -172,12 +160,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         underline: const SizedBox(),
                         isExpanded: true,
                         items: categories
-                            .map(
-                              (cat) => DropdownMenuItem(
-                                value: cat,
-                                child: Text(cat),
-                              ),
-                            )
+                            .map((cat) => DropdownMenuItem(value: cat, child: Text(cat)))
                             .toList(),
                         onChanged: (value) {
                           if (value != null) {
@@ -204,12 +187,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         underline: const SizedBox(),
                         isExpanded: true,
                         items: sortOptions
-                            .map(
-                              (sort) => DropdownMenuItem(
-                                value: sort,
-                                child: Text(sort),
-                              ),
-                            )
+                            .map((sort) => DropdownMenuItem(value: sort, child: Text(sort)))
                             .toList(),
                         onChanged: (value) {
                           if (value != null) {
@@ -230,10 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) {
                     return const Center(
-                      child: CircularProgressIndicator(
-                        color: Color(0xFF507B7B),
-                      ),
-                    );
+                        child: CircularProgressIndicator(color: Color(0xFF507B7B)));
                   }
 
                   final items = snapshot.data!.docs.where((doc) {
@@ -244,55 +219,35 @@ class _HomeScreenState extends State<HomeScreen> {
                     // Exclude items posted by the current user
                     if ((data['userId'] ?? '') == userId) return false;
 
-                    // Match against either 'category' or 'type' (case-insensitive)
-                    final itemCategory =
-                        (data['category'] ?? data['type'] ?? '')
-                            .toString()
-                            .toLowerCase();
+                    final itemCategory = (data['category'] ?? data['type'] ?? '')
+                        .toString()
+                        .toLowerCase();
                     final categoryMatch =
-                        selectedCategory == 'All' ||
-                        itemCategory == selectedCategory.toLowerCase();
+                        selectedCategory == 'All' || itemCategory == selectedCategory.toLowerCase();
 
-                    // proximity filtering: if item has locationGeoPoint and we have current position,
-                    // include only if within 1km (1000 meters)
                     bool passesProximity = true;
-                    if (_currentPosition != null &&
-                        data['locationGeoPoint'] != null) {
+                    if (_currentPosition != null && data['locationGeoPoint'] != null) {
                       final gp = data['locationGeoPoint'];
                       double lat = 0, lon = 0;
                       try {
                         lat = (gp.latitude ?? gp['latitude']) as double;
                         lon = (gp.longitude ?? gp['longitude']) as double;
-                      } catch (_) {
-                        // ignore malformed
-                      }
+                      } catch (_) {}
                       final d = _distanceMeters(
-                        _currentPosition!.latitude,
-                        _currentPosition!.longitude,
-                        lat,
-                        lon,
-                      );
+                          _currentPosition!.latitude, _currentPosition!.longitude, lat, lon);
                       passesProximity = d <= 1000.0;
                     }
 
-                    return name.contains(search) &&
-                        categoryMatch &&
-                        passesProximity;
+                    return name.contains(search) && categoryMatch && passesProximity;
                   }).toList();
 
                   // Sorting
                   if (selectedSort == 'Price: Low → High') {
-                    items.sort(
-                      (a, b) => ((a.data()['price'] ?? 0) as num).compareTo(
-                        (b.data()['price'] ?? 0) as num,
-                      ),
-                    );
+                    items.sort((a, b) => ((a.data()['price'] ?? 0) as num)
+                        .compareTo((b.data()['price'] ?? 0) as num));
                   } else if (selectedSort == 'Price: High → Low') {
-                    items.sort(
-                      (a, b) => ((b.data()['price'] ?? 0) as num).compareTo(
-                        (a.data()['price'] ?? 0) as num,
-                      ),
-                    );
+                    items.sort((a, b) => ((b.data()['price'] ?? 0) as num)
+                        .compareTo((a.data()['price'] ?? 0) as num));
                   } else if (selectedSort == 'Expiry: Soonest First' &&
                       selectedCategory.toLowerCase() == 'grocery') {
                     items.sort((a, b) {
@@ -317,271 +272,60 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   return GridView.builder(
                     padding: const EdgeInsets.all(12),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 1.0, // square cells
-                        ),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 1.0),
                     itemCount: items.length,
                     itemBuilder: (context, index) {
                       final item = items[index];
                       final data = item.data();
                       final itemId = item.id;
-
                       final name = data['name'] ?? 'Unnamed';
-                      final type =
-                          (data['type'] ?? data['category'] ?? 'No Type')
-                              .toString();
+                      final type = (data['type'] ?? data['category'] ?? 'No Type').toString();
                       final price = data['price'] ?? 0;
-
-                      // ✅ Image handling fix
                       final rawUrl = data['imageUrl'];
-                      final imageUrl =
-                          (rawUrl != null && rawUrl.toString().isNotEmpty)
-                          ? rawUrl.toString()
-                          : '';
+                      final imageUrl = (rawUrl != null && rawUrl.toString().isNotEmpty) ? rawUrl.toString() : '';
 
-                      return StreamBuilder<QuerySnapshot>(
-                        stream: FirebaseFirestore.instance
-                            .collection('wishlist')
-                            .where('userId', isEqualTo: userId)
-                            .where('itemId', isEqualTo: itemId)
-                            .snapshots(),
-                        builder: (context, wishlistSnapshot) {
-                          final isFavorited =
-                              wishlistSnapshot.hasData &&
-                              wishlistSnapshot.data!.docs.isNotEmpty;
-
-                          return Card(
-                            color: Colors.white,
-                            margin: EdgeInsets.zero,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            elevation: 3,
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: InkWell(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => ProductDetailScreen(
-                                        itemId: itemId,
-                                        itemData: data,
-                                      ),
-                                    ),
-                                  );
-                                },
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(6),
-                                        child: Hero(
-                                          tag: 'product_${itemId}_0',
-                                          child: (imageUrl.isNotEmpty)
-                                              ? Image.network(
-                                                  imageUrl,
-                                                  width: double.infinity,
-                                                  height: double.infinity,
-                                                  fit: BoxFit.cover,
-                                                  errorBuilder:
-                                                      (
-                                                        context,
-                                                        error,
-                                                        stackTrace,
-                                                      ) {
-                                                        return Image.asset(
-                                                          'assets/images/placeholder.jpg',
-                                                          fit: BoxFit.cover,
-                                                        );
-                                                      },
-                                                )
-                                              : Image.asset(
-                                                  'assets/images/placeholder.jpg',
-                                                  fit: BoxFit.cover,
-                                                ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      name,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: Color(0xFF3A5F5F),
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '$type • ₹$price',
-                                      style: const TextStyle(
-                                        color: Color(0xFF6B6B6B),
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      mainAxisSize: MainAxisSize.max,
-                                      children: [
-                                        IconButton(
-                                          icon: Icon(
-                                            isFavorited
-                                                ? Icons.favorite
-                                                : Icons.favorite_border,
-                                            color: const Color(0xFF507B7B),
-                                            size: 20,
-                                          ),
-                                          onPressed: () async {
-                                            try {
-                                              final wishlistRef =
-                                                  FirebaseFirestore.instance
-                                                      .collection('wishlist');
-
-                                              final existing = await wishlistRef
-                                                  .where(
-                                                    'userId',
-                                                    isEqualTo: userId,
-                                                  )
-                                                  .where(
-                                                    'itemId',
-                                                    isEqualTo: itemId,
-                                                  )
-                                                  .get();
-
-                                              if (existing.docs.isNotEmpty) {
-                                                final batch = FirebaseFirestore
-                                                    .instance
-                                                    .batch();
-                                                for (var doc in existing.docs)
-                                                  batch.delete(doc.reference);
-                                                await batch.commit();
-                                                if (mounted)
-                                                  ScaffoldMessenger.of(
-                                                    context,
-                                                  ).showSnackBar(
-                                                    const SnackBar(
-                                                      content: Text(
-                                                        'Removed from wishlist',
-                                                      ),
-                                                    ),
-                                                  );
-                                              } else {
-                                                await wishlistRef.add({
-                                                  'userId': userId,
-                                                  'itemId': itemId,
-                                                  'timestamp':
-                                                      FieldValue.serverTimestamp(),
-                                                });
-                                                if (mounted)
-                                                  ScaffoldMessenger.of(
-                                                    context,
-                                                  ).showSnackBar(
-                                                    const SnackBar(
-                                                      content: Text(
-                                                        'Added to wishlist',
-                                                      ),
-                                                    ),
-                                                  );
-                                              }
-                                            } catch (e) {
-                                              if (mounted)
-                                                ScaffoldMessenger.of(
-                                                  context,
-                                                ).showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(
-                                                      'Wishlist error: $e',
-                                                    ),
-                                                  ),
-                                                );
-                                            }
-                                          },
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.add_shopping_cart,
-                                            color: Color(0xFF507B7B),
-                                            size: 20,
-                                          ),
-                                          tooltip: 'Add to cart',
-                                          onPressed: () async {
-                                            try {
-                                              final cartRef = FirebaseFirestore
-                                                  .instance
-                                                  .collection('cart');
-
-                                              final existingCart = await cartRef
-                                                  .where(
-                                                    'userId',
-                                                    isEqualTo: userId,
-                                                  )
-                                                  .where(
-                                                    'itemId',
-                                                    isEqualTo: itemId,
-                                                  )
-                                                  .get();
-
-                                              if (existingCart
-                                                  .docs
-                                                  .isNotEmpty) {
-                                                if (mounted)
-                                                  ScaffoldMessenger.of(
-                                                    context,
-                                                  ).showSnackBar(
-                                                    const SnackBar(
-                                                      content: Text(
-                                                        'Item already in cart',
-                                                      ),
-                                                    ),
-                                                  );
-                                              } else {
-                                                await cartRef.add({
-                                                  'userId': userId,
-                                                  'itemId': itemId,
-                                                  'timestamp':
-                                                      FieldValue.serverTimestamp(),
-                                                });
-                                                if (mounted)
-                                                  ScaffoldMessenger.of(
-                                                    context,
-                                                  ).showSnackBar(
-                                                    const SnackBar(
-                                                      content: Text(
-                                                        'Added to cart',
-                                                      ),
-                                                    ),
-                                                  );
-                                              }
-                                            } catch (e) {
-                                              if (mounted)
-                                                ScaffoldMessenger.of(
-                                                  context,
-                                                ).showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(
-                                                      'Cart error: $e',
-                                                    ),
-                                                  ),
-                                                );
-                                            }
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                      return Card(
+                        color: Colors.white,
+                        margin: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        elevation: 3,
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: InkWell(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ProductDetailScreen(itemId: itemId, itemData: data),
                                 ),
-                              ),
+                              );
+                            },
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: (imageUrl.isNotEmpty)
+                                        ? Image.network(imageUrl, width: double.infinity, height: double.infinity, fit: BoxFit.cover)
+                                        : Image.asset('assets/images/placeholder.jpg', fit: BoxFit.cover),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                        color: Color(0xFF3A5F5F), fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 4),
+                                Text('$type • ₹$price',
+                                    style: const TextStyle(
+                                        color: Color(0xFF6B6B6B), fontSize: 13, fontWeight: FontWeight.w600)),
+                              ],
                             ),
-                          );
-                        },
+                          ),
+                        ),
                       );
                     },
                   );
@@ -594,16 +338,19 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  final List<Widget> _otherTabs = const [
-    PlaceholderScreen(title: 'Messages'),
-    MyListScreen(),
-    CartScreen(),
-    ProfileScreen(),
-  ];
+  void _onBottomNavTap(int index) {
+    setState(() => _selectedIndex = index);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final screens = [_buildHomeContent(), ..._otherTabs];
+    final screens = [
+      _buildHomeContent(),
+      const MessagesScreen(), // ✅ Actual Messages tab
+      const MyListScreen(),
+      const CartScreen(),
+      const ProfileScreen(),
+    ];
 
     return Scaffold(
       appBar: AppBar(
@@ -616,11 +363,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: const Icon(Icons.favorite, color: Colors.white),
                   onPressed: () {
                     Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const WishlistScreen(),
-                      ),
-                    );
+                        context, MaterialPageRoute(builder: (_) => const WishlistScreen()));
                   },
                 ),
                 IconButton(
@@ -628,25 +371,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   tooltip: 'Requests',
                   onPressed: () {
                     Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const RequestsScreen(),
-                      ),
-                    );
+                        context, MaterialPageRoute(builder: (_) => const RequestsScreen()));
                   },
                 ),
-                  IconButton(
-                    icon: const Icon(Icons.request_page, color: Colors.white),
-                    tooltip: 'Request Item',
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const RequestingForItemPage(),
-                        ),
-                      );
-                    },
-                  ),
+                IconButton(
+                  icon: const Icon(Icons.request_page, color: Colors.white),
+                  tooltip: 'Request Item',
+                  onPressed: () {
+                    Navigator.push(
+                        context, MaterialPageRoute(builder: (_) => const RequestingForItemPage()));
+                  },
+                ),
               ]
             : null,
       ),
@@ -655,11 +390,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ? FloatingActionButton(
               onPressed: () {
                 Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AddItemScreen(),
-                  ),
-                );
+                    context, MaterialPageRoute(builder: (_) => const AddItemScreen()));
               },
               backgroundColor: const Color(0xFF507B7B),
               child: const Icon(Icons.add, color: Colors.white),
@@ -676,32 +407,9 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.message), label: 'Messages'),
           BottomNavigationBarItem(icon: Icon(Icons.list), label: 'MyList'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart),
-            label: 'Cart',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Cart'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
-      ),
-    );
-  }
-}
-
-class PlaceholderScreen extends StatelessWidget {
-  final String title;
-  const PlaceholderScreen({super.key, required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFEDF4F3),
-      body: SafeArea(
-        child: Center(
-          child: Text(
-            '$title Screen Coming Soon',
-            style: const TextStyle(color: Colors.grey, fontSize: 18),
-          ),
-        ),
       ),
     );
   }

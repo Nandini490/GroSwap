@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:groswap/chat_screen.dart';
+import 'chat_screen.dart';
 import 'product_detail_screen.dart';
 
 class CartScreen extends StatefulWidget {
@@ -29,7 +27,10 @@ class _CartScreenState extends State<CartScreen> {
         elevation: 0,
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('cart').where('userId', isEqualTo: userId).snapshots(),
+        stream: FirebaseFirestore.instance
+            .collection('cart')
+            .where('userId', isEqualTo: userId)
+            .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(
@@ -45,21 +46,24 @@ class _CartScreenState extends State<CartScreen> {
           }
 
           if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator(color: Colors.white));
+            return const Center(
+                child: CircularProgressIndicator(color: Colors.white));
           }
 
           final cartDocs = snapshot.data!.docs;
 
           if (cartDocs.isEmpty) {
             return const Center(
-              child: Text('🛒 Your cart is empty', style: TextStyle(color: Colors.white, fontSize: 18)),
+              child: Text('🛒 Your cart is empty',
+                  style: TextStyle(color: Colors.white, fontSize: 18)),
             );
           }
 
-          // sort by timestamp (latest first)
           cartDocs.sort((a, b) {
-            final aTs = (a['timestamp'] as Timestamp?)?.toDate() ?? DateTime.fromMillisecondsSinceEpoch(0);
-            final bTs = (b['timestamp'] as Timestamp?)?.toDate() ?? DateTime.fromMillisecondsSinceEpoch(0);
+            final aTs = (a['timestamp'] as Timestamp?)?.toDate() ??
+                DateTime.fromMillisecondsSinceEpoch(0);
+            final bTs = (b['timestamp'] as Timestamp?)?.toDate() ??
+                DateTime.fromMillisecondsSinceEpoch(0);
             return bTs.compareTo(aTs);
           });
 
@@ -72,11 +76,14 @@ class _CartScreenState extends State<CartScreen> {
             future: allItemsFuture,
             builder: (context, itemsSnap) {
               if (itemsSnap.hasError) {
-                return Center(child: Text('Error loading items: ${itemsSnap.error}', style: const TextStyle(color: Colors.white)));
+                return Center(
+                    child: Text('Error loading items: ${itemsSnap.error}',
+                        style: const TextStyle(color: Colors.white)));
               }
 
               if (!itemsSnap.hasData) {
-                return const Center(child: CircularProgressIndicator(color: Colors.white));
+                return const Center(
+                    child: CircularProgressIndicator(color: Colors.white));
               }
 
               final itemsDocs = itemsSnap.data!;
@@ -108,7 +115,10 @@ class _CartScreenState extends State<CartScreen> {
                                 icon: const Icon(Icons.delete, color: Colors.redAccent),
                                 onPressed: () {
                                   FirebaseFirestore.instance.collection('cart').doc(cartItem.id).delete();
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Item removed from cart'), backgroundColor: Color(0xFF507B7B)));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text('Item removed from cart'),
+                                        backgroundColor: Color(0xFF507B7B)));
                                 },
                               ),
                             ),
@@ -116,9 +126,13 @@ class _CartScreenState extends State<CartScreen> {
                         }
 
                         final itemData = itemDoc.data() as Map<String, dynamic>? ?? {};
-                        final imageUrls = ((itemData['imageUrls'] as List<dynamic>?) ?? []).map((e) => e.toString()).where((s) => s.isNotEmpty).toList();
+                        final imageUrls = ((itemData['imageUrls'] as List<dynamic>?) ?? [])
+                            .map((e) => e.toString())
+                            .where((s) => s.isNotEmpty)
+                            .toList();
                         final fallbackImage = (itemData['imageUrl'] ?? '').toString();
-                        final displayImages = imageUrls.isNotEmpty ? imageUrls : (fallbackImage.isNotEmpty ? [fallbackImage] : <String>[]);
+                        final displayImages =
+                            imageUrls.isNotEmpty ? imageUrls : (fallbackImage.isNotEmpty ? [fallbackImage] : <String>[]);
 
                         final name = (itemData['name'] ?? 'Unnamed').toString();
                         final ownerId = (itemData['userId'] ?? '').toString();
@@ -132,7 +146,10 @@ class _CartScreenState extends State<CartScreen> {
                           margin: const EdgeInsets.symmetric(vertical: 6),
                           child: InkWell(
                             onTap: () {
-                              Navigator.push(context, MaterialPageRoute(builder: (_) => ProductDetailScreen(itemId: itemDoc.id, itemData: itemData)));
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) => ProductDetailScreen(itemId: itemDoc.id, itemData: itemData)));
                             },
                             child: Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -142,7 +159,12 @@ class _CartScreenState extends State<CartScreen> {
                                   ClipRRect(
                                     borderRadius: BorderRadius.circular(8),
                                     child: displayImages.isNotEmpty
-                                        ? Image.network(displayImages.first, width: 50, height: 50, fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) => const Icon(Icons.image, color: Colors.grey))
+                                        ? Image.network(displayImages.first,
+                                            width: 50,
+                                            height: 50,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (context, error, stackTrace) =>
+                                                const Icon(Icons.image, color: Colors.grey))
                                         : const Icon(Icons.image, color: Colors.grey, size: 40),
                                   ),
                                   const SizedBox(width: 10),
@@ -150,8 +172,19 @@ class _CartScreenState extends State<CartScreen> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text(name, style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w600, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                        Text('${type.isNotEmpty ? "$type • " : ""}₹$price', style: const TextStyle(color: Color(0xFF6B6B6B), fontSize: 11, fontWeight: FontWeight.w500)),
+                                        Text(name,
+                                            style: const TextStyle(
+                                                color: Colors.black87,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 14),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis),
+                                        Text(
+                                            '${type.isNotEmpty ? "$type • " : ""}₹$price',
+                                            style: const TextStyle(
+                                                color: Color(0xFF6B6B6B),
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w500)),
                                       ],
                                     ),
                                   ),
@@ -169,58 +202,78 @@ class _CartScreenState extends State<CartScreen> {
                                           onPressed: () async {
                                             try {
                                               await FirebaseFirestore.instance.collection('cart').doc(cartItem.id).delete();
-                                              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Item removed from cart'), backgroundColor: Color(0xFF507B7B)));
+                                              if (mounted)
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(
+                                                      content: Text('Item removed from cart'),
+                                                      backgroundColor: Color(0xFF507B7B)));
                                             } catch (e) {
-                                              if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Remove failed: $e')));
+                                              if (mounted)
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                    SnackBar(content: Text('Remove failed: $e')));
                                             }
                                           },
                                         ),
                                         const SizedBox(height: 6),
 
-                                        // Place Order button (disabled if there's already a request)
+                                        // Place Order button
                                         StreamBuilder<QuerySnapshot>(
-                                          stream: FirebaseFirestore.instance.collection('requests').where('requesterId', isEqualTo: userId).where('itemId', isEqualTo: cartItem['itemId'] ?? '').snapshots(),
+                                          stream: FirebaseFirestore.instance
+                                              .collection('requests')
+                                              .where('requesterId', isEqualTo: userId)
+                                              .where('itemId', isEqualTo: cartItem['itemId'] ?? '')
+                                              .snapshots(),
                                           builder: (context, reqSnap) {
                                             final hasRequest = reqSnap.hasData && reqSnap.data!.docs.isNotEmpty;
                                             return ElevatedButton(
-                                              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF507B7B), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), minimumSize: const Size(0, 0), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                              style: ElevatedButton.styleFrom(
+                                                  backgroundColor: const Color(0xFF507B7B),
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                  minimumSize: const Size(0, 0),
+                                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap),
                                               onPressed: hasRequest
                                                   ? null
                                                   : () async {
-                                                      try {
-                                                        final user = FirebaseAuth.instance.currentUser;
-                                                        if (user == null) return;
-                                                        if (ownerId == user.uid) {
-                                                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cannot order your own item')));
-                                                          return;
-                                                        }
-                                                        final reqRef = FirebaseFirestore.instance.collection('requests');
-                                                        final existing = await reqRef.where('itemId', isEqualTo: cartItem['itemId']).where('requesterId', isEqualTo: user.uid).get();
-                                                        if (existing.docs.isNotEmpty) {
-                                                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order already exists')));
-                                                          return;
-                                                        }
-                                                        await reqRef.add({'itemId': cartItem['itemId'], 'itemName': name, 'requesterId': user.uid, 'requesterEmail': user.email ?? '', 'ownerId': ownerId, 'status': 'pending', 'timestamp': FieldValue.serverTimestamp()});
-                                                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order placed successfully')));
-                                                      } catch (e) {
-                                                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Order error: $e')));
+                                                      final user = FirebaseAuth.instance.currentUser;
+                                                      if (user == null) return;
+                                                      if (ownerId == user.uid) {
+                                                        ScaffoldMessenger.of(context).showSnackBar(
+                                                            const SnackBar(content: Text('Cannot order your own item')));
+                                                        return;
                                                       }
+                                                      await FirebaseFirestore.instance.collection('requests').add({
+                                                        'itemId': cartItem['itemId'],
+                                                        'itemName': name,
+                                                        'requesterId': user.uid,
+                                                        'requesterEmail': user.email ?? '',
+                                                        'ownerId': ownerId,
+                                                        'status': 'pending',
+                                                        'timestamp': FieldValue.serverTimestamp()
+                                                      });
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                          const SnackBar(content: Text('Order placed successfully')));
                                                     },
-                                              child: const Text('Place Order', style: TextStyle(color: Colors.white, fontSize: 10)),
+                                              child: const Text('Place Order',
+                                                  style: TextStyle(color: Colors.white, fontSize: 10)),
                                             );
                                           },
                                         ),
 
                                         const SizedBox(height: 6),
 
-                                        // Show request status and owner contact actions when accepted
+                                        // Show status + call/message icons
                                         StreamBuilder<QuerySnapshot>(
-                                          stream: FirebaseFirestore.instance.collection('requests').where('requesterId', isEqualTo: userId).where('itemId', isEqualTo: cartItem['itemId'] ?? '').snapshots(),
+                                          stream: FirebaseFirestore.instance
+                                              .collection('requests')
+                                              .where('requesterId', isEqualTo: userId)
+                                              .where('itemId', isEqualTo: cartItem['itemId'] ?? '')
+                                              .snapshots(),
                                           builder: (context, rs) {
                                             if (!rs.hasData || rs.data!.docs.isEmpty) return const SizedBox.shrink();
                                             final r = rs.data!.docs.first;
                                             final st = (r['status'] ?? 'pending').toString();
-                                            String label; Color color;
+                                            String label;
+                                            Color color;
                                             switch (st) {
                                               case 'accepted':
                                                 label = '🟢 Accepted';
@@ -239,12 +292,17 @@ class _CartScreenState extends State<CartScreen> {
                                               crossAxisAlignment: WrapCrossAlignment.center,
                                               spacing: 6,
                                               children: [
-                                                Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600)),
+                                                Text(label,
+                                                    style: TextStyle(
+                                                        color: color,
+                                                        fontSize: 10,
+                                                        fontWeight: FontWeight.w600)),
                                                 if (st == 'accepted')
                                                   FutureBuilder<DocumentSnapshot?>(
                                                     future: FirebaseFirestore.instance.collection('users').doc(ownerId).get(),
                                                     builder: (context, ownerSnap) {
-                                                      if (!ownerSnap.hasData || !ownerSnap.data!.exists) return const SizedBox.shrink();
+                                                      if (!ownerSnap.hasData || !ownerSnap.data!.exists)
+                                                        return const SizedBox.shrink();
                                                       final ownerData = ownerSnap.data!.data() as Map<String, dynamic>?;
                                                       final ownerPhone = (ownerData?['phone'] ?? '').toString();
                                                       final ownerName = (ownerData?['name'] ?? ownerId).toString();
@@ -267,7 +325,14 @@ class _CartScreenState extends State<CartScreen> {
                                                             padding: EdgeInsets.zero,
                                                             constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
                                                             onPressed: () {
-                                                              Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(otherUserId: ownerId, otherUserName: ownerName, itemId: cartItem['itemId'] ?? '')));
+                                                              Navigator.push(
+                                                                  context,
+                                                                  MaterialPageRoute(
+                                                                      builder: (_) => ChatScreen(
+                                                                            otherUserId: ownerId,
+                                                                            otherUserName: ownerName,
+                                                                            itemId: cartItem['itemId'] ?? '',
+                                                                          )));
                                                             },
                                                           ),
                                                         ],
@@ -301,13 +366,19 @@ class _CartScreenState extends State<CartScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text('Total', style: TextStyle(color: Colors.grey)),
-                            Text('₹${grandTotal.toStringAsFixed(2)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            Text('₹${grandTotal.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                    fontSize: 18, fontWeight: FontWeight.bold)),
                           ],
                         ),
                         ElevatedButton(
-                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF507B7B), padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12)),
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF507B7B),
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12)),
                           onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Proceeding to checkout — total ₹${grandTotal.toStringAsFixed(2)}')));
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                content: Text(
+                                    'Proceeding to checkout — total ₹${grandTotal.toStringAsFixed(2)}')));
                           },
                           child: const Text('Proceed to checkout'),
                         ),
