@@ -5,6 +5,7 @@ import 'firebase_options.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
 import 'splash_screen.dart';
+import 'item_specifications_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,7 +61,20 @@ class MyApp extends StatelessWidget {
 
       // Show SplashScreen first
       // Register named routes so SplashScreen can navigate without importing main.dart
-      routes: {'/auth': (context) => const AuthGate()},
+      routes: {
+        '/auth': (context) => const AuthGate(),
+        '/specs': (context) {
+          final args =
+              ModalRoute.of(context)!.settings.arguments
+                  as Map<String, dynamic>?;
+          final category = args?['category'] as String? ?? 'Grocery';
+          final condition = args?['condition'] as String? ?? 'New';
+          return ItemSpecificationsPage(
+            category: category,
+            condition: condition,
+          );
+        },
+      },
 
       home: const SplashScreen(),
     );

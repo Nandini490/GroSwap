@@ -32,6 +32,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
   List<String> _uploadedImageUrls = []; // Store uploaded Cloudinary URLs
   bool _isLoading = false;
   bool _isUploadingImage = false; // Track image upload state
+  Map<String, dynamic>? _specs;
 
   // Cloudinary setup
   final cloudinary = CloudinaryPublic(
@@ -214,6 +215,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
         'unit': _unitController.text.trim(),
         'location': _locationController.text.trim(),
         'notes': _notesController.text.trim(),
+        'specs': _specs ?? {},
         // Save array of image URLs and keep a single-image fallback for older code
         'imageUrls': _uploadedImageUrls,
         'imageUrl': _uploadedImageUrls.isNotEmpty
@@ -499,23 +501,57 @@ class _AddItemScreenState extends State<AddItemScreen> {
                     ),
                   ),
                 const SizedBox(height: 20),
-                Center(
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.teal)
-                      : ElevatedButton(
-                          onPressed: _saveItem,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF507B7B),
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 14,
-                              horizontal: 60,
-                            ),
-                          ),
-                          child: const Text(
-                            "Save Item",
-                            style: TextStyle(fontSize: 16, color: Colors.white),
-                          ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          // open specifications page and pass category + condition
+                          final specs = await Navigator.pushNamed(
+                            context,
+                            '/specs',
+                            arguments: {
+                              'category': selectedCategory,
+                              'condition': selectedCondition,
+                            },
+                          );
+                          if (specs != null && specs is Map<String, dynamic>) {
+                            setState(() => _specs = specs);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF507B7B),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
+                        child: Text(
+                          _specs == null
+                              ? 'Add Specifications'
+                              : 'Edit Specifications',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _isLoading
+                          ? const CircularProgressIndicator(color: Colors.teal)
+                          : ElevatedButton(
+                              onPressed: _saveItem,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF507B7B),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                              ),
+                              child: const Text(
+                                "Save Item",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                    ),
+                  ],
                 ),
               ],
             ),
