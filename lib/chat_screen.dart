@@ -19,11 +19,12 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
-  late final String _me = FirebaseAuth.instance.currentUser!.uid;
+  String? _me;
 
   String get _chatId {
     // deterministic room id for two participants
-    final ids = [_me, widget.otherUserId]..sort();
+    if (_me == null) return '';
+    final ids = [_me!, widget.otherUserId]..sort();
     return ids.join('_');
   }
 
@@ -33,6 +34,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _sendMessage() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
+    if (_me == null) return;
     final doc = _messagesRef.doc();
     await doc.set({
       'id': doc.id,
@@ -63,7 +65,32 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      // If not authenticated, close the screen to avoid hanging in a loader
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) Navigator.of(context).pop();
+      });
+    } else {
+      _me = user.uid;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // If user is not available yet, show a friendly message instead of building queries
+    if (_me == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('Chat with ${widget.otherUserName}'),
+          backgroundColor: const Color(0xFF507B7B),
+          centerTitle: true,
+        ),
+        body: const Center(child: Text('Please sign in to use chat')),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         title: Text('Chat with ${widget.otherUserName}'),
@@ -76,22 +103,36 @@ class _ChatScreenState extends State<ChatScreen> {
             child: StreamBuilder<QuerySnapshot>(
               stream: _messagesRef
                   .where('chatId', isEqualTo: _chatId)
-                  .orderBy('timestamp', descending: false)
                   .snapshots(),
               builder: (context, snap) {
-                if (!snap.hasData)
-                  return const Center(child: CircularProgressIndicator());
-                final docs = snap.data!.docs;
-                if (docs.isEmpty) {
+                // If still waiting for the first snapshot, do not show an indefinite spinner.
+                if (snap.connectionState == ConnectionState.waiting) {
+                  return const Center(child: Text('Start the conversation'));
+                }
+
+                if (snap.hasError) {
+                  return Center(
+                      child: Text('Chat error: ${snap.error}'));
+                }
+
+                final docs = snap.data?.docs ?? [];
+                final sortedDocs = docs..sort((a, b) {
+                  final tsA = a['timestamp'] as Timestamp?;
+                  final tsB = b['timestamp'] as Timestamp?;
+                  return (tsA?.compareTo(tsB ?? Timestamp.now()) ?? 0).compareTo(
+                    (tsB?.compareTo(tsA ?? Timestamp.now()) ?? 0)
+                  );
+                });
+                if (sortedDocs.isEmpty) {
                   return const Center(child: Text('Start the conversation'));
                 }
 
                 return ListView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.all(12),
-                  itemCount: docs.length,
+                  itemCount: sortedDocs.length,
                   itemBuilder: (context, index) {
-                    final m = docs[index];
+                    final m = sortedDocs[index];
                     final sender = (m['senderId'] ?? '').toString();
                     final text = (m['messageText'] ?? '').toString();
                     final mine = sender == _me;

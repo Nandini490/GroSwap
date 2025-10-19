@@ -58,9 +58,11 @@ class CartScreen extends StatelessWidget {
 
           // Sort cart items by timestamp (latest first)
           cartDocs.sort((a, b) {
-            final aTs = (a['timestamp'] as Timestamp?)?.toDate() ??
+            final aTs =
+                (a['timestamp'] as Timestamp?)?.toDate() ??
                 DateTime.fromMillisecondsSinceEpoch(0);
-            final bTs = (b['timestamp'] as Timestamp?)?.toDate() ??
+            final bTs =
+                (b['timestamp'] as Timestamp?)?.toDate() ??
                 DateTime.fromMillisecondsSinceEpoch(0);
             return bTs.compareTo(aTs);
           });
@@ -121,8 +123,10 @@ class CartScreen extends StatelessWidget {
                             child: ListTile(
                               title: const Text('Item no longer available'),
                               trailing: IconButton(
-                                icon: const Icon(Icons.delete,
-                                    color: Colors.redAccent),
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: Colors.redAccent,
+                                ),
                                 onPressed: () {
                                   FirebaseFirestore.instance
                                       .collection('cart')
@@ -147,13 +151,13 @@ class CartScreen extends StatelessWidget {
                                 .map((e) => e.toString())
                                 .where((s) => s.isNotEmpty)
                                 .toList();
-                        final fallbackImage =
-                            (itemData['imageUrl'] ?? '').toString();
+                        final fallbackImage = (itemData['imageUrl'] ?? '')
+                            .toString();
                         final displayImages = imageUrls.isNotEmpty
                             ? imageUrls
                             : (fallbackImage.isNotEmpty
-                                ? [fallbackImage]
-                                : <String>[]);
+                                  ? [fallbackImage]
+                                  : <String>[]);
 
                         final name = (itemData['name'] ?? 'Unnamed').toString();
                         final ownerId = (itemData['userId'] ?? '').toString();
@@ -171,7 +175,9 @@ class CartScreen extends StatelessWidget {
                           margin: const EdgeInsets.symmetric(vertical: 6),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 6),
+                              horizontal: 8,
+                              vertical: 6,
+                            ),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -186,11 +192,16 @@ class CartScreen extends StatelessWidget {
                                           fit: BoxFit.cover,
                                           errorBuilder:
                                               (context, error, stackTrace) =>
-                                                  const Icon(Icons.image,
-                                                      color: Colors.grey),
+                                                  const Icon(
+                                                    Icons.image,
+                                                    color: Colors.grey,
+                                                  ),
                                         )
-                                      : const Icon(Icons.image,
-                                          color: Colors.grey, size: 40),
+                                      : const Icon(
+                                          Icons.image,
+                                          color: Colors.grey,
+                                          size: 40,
+                                        ),
                                 ),
                                 const SizedBox(width: 10),
 
@@ -235,27 +246,35 @@ class CartScreen extends StatelessWidget {
                                       StreamBuilder<QuerySnapshot>(
                                         stream: FirebaseFirestore.instance
                                             .collection('requests')
-                                            .where('requesterId',
-                                                isEqualTo: userId)
-                                            .where('itemId',
-                                                isEqualTo:
-                                                    cartItem['itemId'] ?? '')
+                                            .where(
+                                              'requesterId',
+                                              isEqualTo: userId,
+                                            )
+                                            .where(
+                                              'itemId',
+                                              isEqualTo:
+                                                  cartItem['itemId'] ?? '',
+                                            )
                                             .snapshots(),
                                         builder: (context, reqSnap) {
-                                          final hasRequest = reqSnap.hasData &&
+                                          final hasRequest =
+                                              reqSnap.hasData &&
                                               reqSnap.data!.docs.isNotEmpty;
 
                                           return ElevatedButton(
                                             style: ElevatedButton.styleFrom(
-                                              backgroundColor:
-                                                  const Color(0xFF507B7B),
+                                              backgroundColor: const Color(
+                                                0xFF507B7B,
+                                              ),
                                               padding:
                                                   const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 4),
+                                                    horizontal: 8,
+                                                    vertical: 4,
+                                                  ),
                                               minimumSize: const Size(0, 0),
-                                              tapTargetSize: MaterialTapTargetSize
-                                                  .shrinkWrap,
+                                              tapTargetSize:
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
                                             ),
                                             onPressed: hasRequest
                                                 ? null
@@ -266,14 +285,14 @@ class CartScreen extends StatelessWidget {
                                                           .currentUser;
                                                       if (user == null) return;
 
-                                                      if (ownerId ==
-                                                          user.uid) {
+                                                      if (ownerId == user.uid) {
                                                         ScaffoldMessenger.of(
-                                                                context)
-                                                            .showSnackBar(
+                                                          context,
+                                                        ).showSnackBar(
                                                           const SnackBar(
                                                             content: Text(
-                                                                'Cannot order your own item'),
+                                                              'Cannot order your own item',
+                                                            ),
                                                           ),
                                                         );
                                                         return;
@@ -283,60 +302,65 @@ class CartScreen extends StatelessWidget {
                                                           FirebaseFirestore
                                                               .instance
                                                               .collection(
-                                                                  'requests');
-                                                      final existing =
-                                                          await reqRef
-                                                              .where('itemId',
-                                                                  isEqualTo:
-                                                                      cartItem[
-                                                                          'itemId'])
-                                                              .where(
-                                                                  'requesterId',
-                                                                  isEqualTo:
-                                                                      user.uid)
-                                                              .get();
+                                                                'requests',
+                                                              );
+                                                      final existing = await reqRef
+                                                          .where(
+                                                            'itemId',
+                                                            isEqualTo:
+                                                                cartItem['itemId'],
+                                                          )
+                                                          .where(
+                                                            'requesterId',
+                                                            isEqualTo: user.uid,
+                                                          )
+                                                          .get();
 
                                                       if (existing
-                                                          .docs.isNotEmpty) {
+                                                          .docs
+                                                          .isNotEmpty) {
                                                         ScaffoldMessenger.of(
-                                                                context)
-                                                            .showSnackBar(
+                                                          context,
+                                                        ).showSnackBar(
                                                           const SnackBar(
                                                             content: Text(
-                                                                'Order already exists'),
+                                                              'Order already exists',
+                                                            ),
                                                           ),
                                                         );
                                                         return;
                                                       }
 
                                                       await reqRef.add({
-                                                        'itemId': cartItem[
-                                                            'itemId'],
+                                                        'itemId':
+                                                            cartItem['itemId'],
                                                         'itemName': name,
                                                         'requesterId': user.uid,
                                                         'requesterEmail':
                                                             user.email ?? '',
                                                         'ownerId': ownerId,
                                                         'status': 'pending',
-                                                        'timestamp': FieldValue
-                                                            .serverTimestamp(),
+                                                        'timestamp':
+                                                            FieldValue.serverTimestamp(),
                                                       });
 
                                                       ScaffoldMessenger.of(
-                                                              context)
-                                                          .showSnackBar(
+                                                        context,
+                                                      ).showSnackBar(
                                                         const SnackBar(
                                                           content: Text(
-                                                              'Order placed successfully'),
+                                                            'Order placed successfully',
+                                                          ),
                                                         ),
                                                       );
                                                     } catch (e) {
                                                       ScaffoldMessenger.of(
-                                                              context)
-                                                          .showSnackBar(
+                                                        context,
+                                                      ).showSnackBar(
                                                         SnackBar(
                                                           content: Text(
-                                                              'Order error: $e'),
+                                                            'Order error: $e',
+                                                          ),
                                                         ),
                                                       );
                                                     }
@@ -357,11 +381,15 @@ class CartScreen extends StatelessWidget {
                                       StreamBuilder<QuerySnapshot>(
                                         stream: FirebaseFirestore.instance
                                             .collection('requests')
-                                            .where('requesterId',
-                                                isEqualTo: userId)
-                                            .where('itemId',
-                                                isEqualTo:
-                                                    cartItem['itemId'] ?? '')
+                                            .where(
+                                              'requesterId',
+                                              isEqualTo: userId,
+                                            )
+                                            .where(
+                                              'itemId',
+                                              isEqualTo:
+                                                  cartItem['itemId'] ?? '',
+                                            )
                                             .snapshots(),
                                         builder: (context, rs) {
                                           if (!rs.hasData ||
@@ -404,18 +432,21 @@ class CartScreen extends StatelessWidget {
                                                 ),
                                               ),
                                               if (st == 'accepted')
-                                                FutureBuilder<DocumentSnapshot?>(
+                                                FutureBuilder<
+                                                  DocumentSnapshot?
+                                                >(
                                                   future: FirebaseFirestore
                                                       .instance
                                                       .collection('users')
                                                       .doc(ownerId)
                                                       .get(),
                                                   builder: (context, ownerSnap) {
-                                                    final ownerData = ownerSnap
-                                                            .data
-                                                            ?.data()
-                                                        as Map<String,
-                                                            dynamic>?;
+                                                    final ownerData =
+                                                        ownerSnap.data?.data()
+                                                            as Map<
+                                                              String,
+                                                              dynamic
+                                                            >?;
 
                                                     final ownerPhone =
                                                         (ownerData?['phone'] ??
@@ -432,50 +463,57 @@ class CartScreen extends StatelessWidget {
                                                       children: [
                                                         IconButton(
                                                           icon: const Icon(
-                                                              Icons.call,
-                                                              color:
-                                                                  Colors.green,
-                                                              size: 14),
+                                                            Icons.call,
+                                                            color: Colors.green,
+                                                            size: 14,
+                                                          ),
                                                           padding:
                                                               EdgeInsets.zero,
                                                           constraints:
                                                               const BoxConstraints(
-                                                                  minWidth: 20,
-                                                                  minHeight: 20),
-                                                          onPressed: ownerPhone
+                                                                minWidth: 20,
+                                                                minHeight: 20,
+                                                              ),
+                                                          onPressed:
+                                                              ownerPhone
                                                                   .isNotEmpty
                                                               ? () async {
                                                                   final uri = Uri(
-                                                                      scheme:
-                                                                          'tel',
-                                                                      path:
-                                                                          ownerPhone);
+                                                                    scheme:
+                                                                        'tel',
+                                                                    path:
+                                                                        ownerPhone,
+                                                                  );
                                                                   if (await canLaunchUrl(
-                                                                      uri)) {
+                                                                    uri,
+                                                                  )) {
                                                                     await launchUrl(
-                                                                        uri);
+                                                                      uri,
+                                                                    );
                                                                   }
                                                                 }
                                                               : null,
                                                         ),
                                                         IconButton(
                                                           icon: const Icon(
-                                                              Icons.message,
-                                                              color: Color(
-                                                                  0xFF507B7B),
-                                                              size: 14),
+                                                            Icons.message,
+                                                            color: Color(
+                                                              0xFF507B7B,
+                                                            ),
+                                                            size: 14,
+                                                          ),
                                                           padding:
                                                               EdgeInsets.zero,
                                                           constraints:
                                                               const BoxConstraints(
-                                                                  minWidth: 20,
-                                                                  minHeight: 20),
+                                                                minWidth: 20,
+                                                                minHeight: 20,
+                                                              ),
                                                           onPressed: () {
                                                             Navigator.push(
                                                               context,
                                                               MaterialPageRoute(
-                                                                builder: (_) =>
-                                                                    ChatScreen(
+                                                                builder: (_) => ChatScreen(
                                                                   otherUserId:
                                                                       ownerId,
                                                                   otherUserName:
@@ -507,7 +545,9 @@ class CartScreen extends StatelessWidget {
                   // 💰 Checkout bar
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     color: Colors.white,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -515,12 +555,16 @@ class CartScreen extends StatelessWidget {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Total',
-                                style: TextStyle(color: Colors.grey)),
+                            const Text(
+                              'Total',
+                              style: TextStyle(color: Colors.grey),
+                            ),
                             Text(
                               '₹${grandTotal.toStringAsFixed(2)}',
                               style: const TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.bold),
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ],
                         ),
@@ -528,13 +572,18 @@ class CartScreen extends StatelessWidget {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF507B7B),
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 12),
+                              horizontal: 20,
+                              vertical: 12,
+                            ),
                           ),
                           onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              content: Text(
-                                  'Proceeding to checkout — total ₹${grandTotal.toStringAsFixed(2)}'),
-                            ));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Proceeding to checkout — total ₹${grandTotal.toStringAsFixed(2)}',
+                                ),
+                              ),
+                            );
                           },
                           child: const Text('Proceed to checkout'),
                         ),

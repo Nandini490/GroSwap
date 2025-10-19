@@ -365,7 +365,9 @@ class _AddItemScreenState extends State<AddItemScreen> {
                               ),
                       ),
                       const SizedBox(height: 8),
-                      Row(
+                      Wrap(
+                        spacing: 8.0,
+                        runSpacing: 8.0,
                         children: [
                           ElevatedButton.icon(
                             onPressed: _isUploadingImage ? null : _pickImages,
@@ -375,7 +377,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
                               backgroundColor: const Color(0xFF507B7B),
                             ),
                           ),
-                          const SizedBox(width: 8),
                           ElevatedButton.icon(
                             onPressed: _isUploadingImage ? null : _takePhoto,
                             icon: const Icon(Icons.camera_alt),
@@ -384,7 +385,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
                               backgroundColor: const Color(0xFF507B7B),
                             ),
                           ),
-                          const SizedBox(width: 12),
                           if (_isUploadingImage)
                             const Text(
                               'Uploading...',

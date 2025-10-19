@@ -24,34 +24,82 @@ class _MyListScreenState extends State<MyListScreen> {
     }
   }
 
-  void _deleteItem(String itemId) async {
+  Future<void> _deleteItem(String itemId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
-        title: const Text("Delete Item", style: TextStyle(color: Colors.black)),
+        title: const Text(
+          "Delete Item?",
+          style: TextStyle(color: Colors.black),
+        ),
         content: const Text(
-          "Are you sure you want to delete this item?",
+          "Are you sure? Irreversible.",
           style: TextStyle(color: Colors.black),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text("Cancel", style: TextStyle(color: Colors.teal)),
+            child: const Text("Cancel", style: TextStyle(color: Colors.red)),
           ),
           TextButton(
+            style: TextButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text("Delete", style: TextStyle(color: Colors.red)),
+            child: const Text("Delete", style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
 
-    if (confirm == true) {
-      await FirebaseFirestore.instance.collection('items').doc(itemId).delete();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Item deleted successfully")),
-      );
+    if (confirm != true) return;
+
+    // show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: Color(0xFF507B7B)),
+      ),
+    );
+
+    try {
+      final batch = FirebaseFirestore.instance.batch();
+
+      // Delete mylist entries for this user referencing the item
+      final mylistQuery = await FirebaseFirestore.instance
+          .collection('mylist')
+          .where('userId', isEqualTo: user.uid)
+          .where('itemId', isEqualTo: itemId)
+          .get();
+      for (var d in mylistQuery.docs) {
+        batch.delete(d.reference);
+      }
+
+      // Delete the item document
+      final itemRef = FirebaseFirestore.instance
+          .collection('items')
+          .doc(itemId);
+      batch.delete(itemRef);
+
+      await batch.commit();
+
+      // pop loading
+      if (mounted) Navigator.of(context).pop();
+
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Deleted!')));
+    } catch (e) {
+      // pop loading
+      if (mounted) Navigator.of(context).pop();
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
     }
   }
 
