@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:groswap/chat_screen.dart';
+// Chat screen removed; messaging is now handled via MessagesScreen (inbox)
+import 'package:groswap/utils/message_utils.dart';
 import 'product_detail_screen.dart';
 
 class CartScreen extends StatefulWidget {
@@ -247,7 +246,7 @@ class _CartScreenState extends State<CartScreen> {
                                                       if (!ownerSnap.hasData || !ownerSnap.data!.exists) return const SizedBox.shrink();
                                                       final ownerData = ownerSnap.data!.data() as Map<String, dynamic>?;
                                                       final ownerPhone = (ownerData?['phone'] ?? '').toString();
-                                                      final ownerName = (ownerData?['name'] ?? ownerId).toString();
+                                                      // final ownerName is not needed here; use ownerId if required
                                                       return Row(
                                                         mainAxisSize: MainAxisSize.min,
                                                         children: [
@@ -266,8 +265,36 @@ class _CartScreenState extends State<CartScreen> {
                                                             icon: const Icon(Icons.message, color: Color(0xFF507B7B), size: 14),
                                                             padding: EdgeInsets.zero,
                                                             constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-                                                            onPressed: () {
-                                                              Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(otherUserId: ownerId, otherUserName: ownerName, itemId: cartItem['itemId'] ?? '')));
+                                                            onPressed: () async {
+                                                              try {
+                                                                final me = FirebaseAuth.instance.currentUser;
+                                                                if (me == null) return;
+                                                                final buyerId = me.uid;
+                                                                final itemId = (cartItem['itemId'] ?? '').toString();
+                                                                final ids = [buyerId, ownerId]..sort();
+                                                                final chatId = itemId.isNotEmpty ? '${itemId}_${ids.join('_')}' : ids.join('_');
+                                                                final msgsRef = FirebaseFirestore.instance.collection('messages');
+                                                                final existing = await msgsRef.where('chatId', isEqualTo: chatId).limit(1).get();
+                                                                if (existing.docs.isEmpty) {
+                                                                  final user = FirebaseAuth.instance.currentUser;
+                                                                  final senderName = user?.displayName ?? user?.email ?? '';
+                                                                  final doc = msgsRef.doc();
+                                                                  final map = buildMessageMap(
+                                                                    id: doc.id,
+                                                                    chatId: chatId,
+                                                                    participants: [buyerId, ownerId],
+                                                                    senderId: buyerId,
+                                                                    senderName: senderName,
+                                                                    itemId: itemId,
+                                                                    messageText: 'Hi, I would like to discuss about this item: ${cartItem['itemId'] ?? ''}',
+                                                                  );
+                                                                  await doc.set(map);
+                                                                }
+                                                                // Navigate to the Messages screen (the created message will make the chat appear in the inbox)
+                                                                Navigator.pushNamed(context, '/messages');
+                                                              } catch (e) {
+                                                                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Chat error: $e')));
+                                                              }
                                                             },
                                                           ),
                                                         ],
