@@ -22,8 +22,8 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  late String _me;
-  late String _chatId;
+  late final String _me;
+  late final String _chatId;
 
   final CollectionReference _messagesRef =
       FirebaseFirestore.instance.collection('messages');
@@ -34,7 +34,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final user = FirebaseAuth.instance.currentUser!;
     _me = user.uid;
 
-    // One chat per item per buyer-owner
+    // Unique chat per item and participants
     final ids = [_me, widget.otherUserId]..sort();
     _chatId = '${widget.itemId}_${ids.join("_")}';
   }
@@ -45,7 +45,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     try {
       final user = FirebaseAuth.instance.currentUser!;
-      final senderName = user.displayName ?? user.email ?? '';
+      final senderName = user.displayName ?? user.email ?? 'Anonymous';
 
       await _messagesRef.add({
         'chatId': _chatId,
@@ -59,20 +59,22 @@ class _ChatScreenState extends State<ChatScreen> {
 
       _controller.clear();
 
-      // Scroll to bottom
-      Future.delayed(const Duration(milliseconds: 250), () {
+      // Scroll to bottom after a small delay
+      Future.delayed(const Duration(milliseconds: 100), () {
         if (_scrollController.hasClients) {
           _scrollController.animateTo(
             _scrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 250),
+            duration: const Duration(milliseconds: 200),
             curve: Curves.easeOut,
           );
         }
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to send message: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send message: $e')),
+        );
+      }
     }
   }
 
@@ -97,30 +99,29 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
-          // Chat messages list
+          // Chat messages
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: query.snapshots(),
               builder: (context, snap) {
                 if (snap.hasError) {
-                  return Padding(
-                    padding: const EdgeInsets.all(16.0),
+                  return Center(
                     child: Text(
-                      '⚠️ Chat error:\n${snap.error}\n\nIf it says "requires an index", go to Firebase Console → Firestore → Indexes → Add Index →\nCollection: messages\nFields:\n• chatId (Ascending)\n• timestamp (Ascending)',
+                      '⚠️ Error loading chat: ${snap.error}',
                       style: const TextStyle(color: Colors.redAccent),
+                      textAlign: TextAlign.center,
                     ),
                   );
                 }
 
-                if (snap.connectionState == ConnectionState.waiting) {
+                if (!snap.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                final docs = snap.data?.docs ?? [];
+                final docs = snap.data!.docs;
                 if (docs.isEmpty) {
                   return const Center(
-                    child: Text('Start the conversation 😊'),
-                  );
+                      child: Text('Start the conversation 😊'));
                 }
 
                 return ListView.builder(
@@ -129,22 +130,21 @@ class _ChatScreenState extends State<ChatScreen> {
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
                     final data = docs[index].data() as Map<String, dynamic>;
-                    final sender = (data['senderId'] ?? '').toString();
-                    final text = (data['messageText'] ?? '').toString();
-                    final mine = sender == _me;
+                    final sender = data['senderId'] ?? '';
+                    final text = data['messageText'] ?? '';
+                    final isMe = sender == _me;
 
                     return Align(
                       alignment:
-                          mine ? Alignment.centerRight : Alignment.centerLeft,
+                          isMe ? Alignment.centerRight : Alignment.centerLeft,
                       child: Container(
                         margin: const EdgeInsets.symmetric(vertical: 5),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 10),
                         constraints: BoxConstraints(
-                            maxWidth:
-                                MediaQuery.of(context).size.width * 0.75),
+                            maxWidth: MediaQuery.of(context).size.width * 0.75),
                         decoration: BoxDecoration(
-                          color: mine
+                          color: isMe
                               ? const Color(0xFF507B7B)
                               : Colors.grey.shade300,
                           borderRadius: BorderRadius.circular(12),
@@ -152,7 +152,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         child: Text(
                           text,
                           style: TextStyle(
-                            color: mine ? Colors.white : Colors.black87,
+                            color: isMe ? Colors.white : Colors.black87,
                             fontSize: 15,
                           ),
                         ),
@@ -166,7 +166,6 @@ class _ChatScreenState extends State<ChatScreen> {
 
           // Input field
           SafeArea(
-            top: false,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
               child: Row(

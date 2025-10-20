@@ -304,8 +304,10 @@ class _CartScreenState extends State<CartScreen> {
                                                       if (!ownerSnap.hasData || !ownerSnap.data!.exists)
                                                         return const SizedBox.shrink();
                                                       final ownerData = ownerSnap.data!.data() as Map<String, dynamic>?;
+
                                                       final ownerPhone = (ownerData?['phone'] ?? '').toString();
-                                                      // final ownerName is not needed here; use ownerId if required
+                                                      final ownerName = (ownerData?['name'] ?? 'Seller').toString();
+
                                                       return Row(
                                                         mainAxisSize: MainAxisSize.min,
                                                         children: [
@@ -325,7 +327,13 @@ class _CartScreenState extends State<CartScreen> {
                                                             padding: EdgeInsets.zero,
                                                             constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
                                                             onPressed: () {
-                                                              Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(otherUserId: ownerId, otherUserName: ownerName, itemId: cartItem['itemId'] ?? '')));
+                                                              Navigator.push(
+                                                                  context,
+                                                                  MaterialPageRoute(
+                                                                      builder: (_) => ChatScreen(
+                                                                          otherUserId: ownerId,
+                                                                          otherUserName: ownerName,
+                                                                          itemId: cartItem['itemId'] ?? '')));
                                                             },
                                                           ),
                                                         ],
