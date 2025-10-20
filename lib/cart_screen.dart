@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'chat_screen.dart';
+import 'package:groswap/chat_screen.dart';
 import 'product_detail_screen.dart';
 
 class CartScreen extends StatefulWidget {
@@ -305,7 +305,7 @@ class _CartScreenState extends State<CartScreen> {
                                                         return const SizedBox.shrink();
                                                       final ownerData = ownerSnap.data!.data() as Map<String, dynamic>?;
                                                       final ownerPhone = (ownerData?['phone'] ?? '').toString();
-                                                      final ownerName = (ownerData?['name'] ?? ownerId).toString();
+                                                      // final ownerName is not needed here; use ownerId if required
                                                       return Row(
                                                         mainAxisSize: MainAxisSize.min,
                                                         children: [
@@ -325,14 +325,7 @@ class _CartScreenState extends State<CartScreen> {
                                                             padding: EdgeInsets.zero,
                                                             constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
                                                             onPressed: () {
-                                                              Navigator.push(
-                                                                  context,
-                                                                  MaterialPageRoute(
-                                                                      builder: (_) => ChatScreen(
-                                                                            otherUserId: ownerId,
-                                                                            otherUserName: ownerName,
-                                                                            itemId: cartItem['itemId'] ?? '',
-                                                                          )));
+                                                              Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(otherUserId: ownerId, otherUserName: ownerName, itemId: cartItem['itemId'] ?? '')));
                                                             },
                                                           ),
                                                         ],

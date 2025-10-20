@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:math';
 
@@ -43,11 +43,8 @@ class _RequestingForItemPageState extends State<RequestingForItemPage>
     try {
       if (!await Geolocator.isLocationServiceEnabled()) return;
       LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
+      if (permission == LocationPermission.denied) permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) return;
-
       final p = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
       setState(() => _pos = p);
     } catch (_) {}
@@ -59,8 +56,7 @@ class _RequestingForItemPageState extends State<RequestingForItemPage>
     const R = 6371000; // meters
     final dLat = _deg2rad(lat2 - lat1);
     final dLon = _deg2rad(lon2 - lon1);
-    final a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(_deg2rad(lat1)) * cos(_deg2rad(lat2)) * sin(dLon / 2) * sin(dLon / 2);
+    final a = sin(dLat / 2) * sin(dLat / 2) + cos(_deg2rad(lat1)) * cos(_deg2rad(lat2)) * sin(dLon / 2) * sin(dLon / 2);
     final c = 2 * atan2(sqrt(a), sqrt(1 - a));
     return R * c;
   }
@@ -68,18 +64,16 @@ class _RequestingForItemPageState extends State<RequestingForItemPage>
   Future<void> _sendRequest() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-
     final name = _nameCtl.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter item name')));
       return;
     }
-
     setState(() => _sending = true);
     try {
       final data = {
         'userId': user.uid,
-        'userEmail': user.email ?? '',
+        'userEmail': user.email,
         'name': name,
         'description': _descCtl.text.trim(),
         'quantity': _qtyCtl.text.trim(),
@@ -87,21 +81,15 @@ class _RequestingForItemPageState extends State<RequestingForItemPage>
         'status': 'open',
         'timestamp': FieldValue.serverTimestamp(),
       };
-      if (_pos != null) {
-        data['locationGeoPoint'] = GeoPoint(_pos!.latitude, _pos!.longitude);
-      }
-
+      if (_pos != null) data['locationGeoPoint'] = GeoPoint(_pos!.latitude, _pos!.longitude);
       final doc = await FirebaseFirestore.instance.collection('requests').add(data);
-
-      // Optional: keep in my_requests
+      // Optionally create a 'my_requests' entry
       await FirebaseFirestore.instance.collection('my_requests').add({
         'userId': user.uid,
         'requestId': doc.id,
         'timestamp': FieldValue.serverTimestamp(),
       });
-
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Request posted')));
-
       _nameCtl.clear();
       _descCtl.clear();
       _qtyCtl.clear();
@@ -113,37 +101,28 @@ class _RequestingForItemPageState extends State<RequestingForItemPage>
     }
   }
 
-  Future<void> _offerForRequest(String requestId) async {
+  Future<void> _offerForRequest(String requestId, Map<String, dynamic> reqData) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-    final offerRef = FirebaseFirestore.instance
-        .collection('requests')
-        .doc(requestId)
-        .collection('offers');
-
+    final offerRef = FirebaseFirestore.instance.collection('requests').doc(requestId).collection('offers');
     await offerRef.add({
       'responderId': user.uid,
-      'responderEmail': user.email ?? '',
+      'responderEmail': user.email,
       'timestamp': FieldValue.serverTimestamp(),
     });
-
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Offer sent')));
   }
 
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Request Item'),
         backgroundColor: const Color(0xFF507B7B),
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
-            Tab(text: 'Request'),
-            Tab(text: 'Nearby Requests'),
-          ],
+          tabs: const [Tab(text: 'Request'), Tab(text: 'Nearby Requests')],
         ),
       ),
       body: TabBarView(
@@ -152,46 +131,30 @@ class _RequestingForItemPageState extends State<RequestingForItemPage>
           // Request form
           Padding(
             padding: const EdgeInsets.all(12.0),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextFormField(controller: _nameCtl, decoration: const InputDecoration(labelText: 'Item name')),
-                  const SizedBox(height: 8),
-                  TextFormField(controller: _descCtl, decoration: const InputDecoration(labelText: 'Description')),
-                  const SizedBox(height: 8),
-                  TextFormField(controller: _qtyCtl, decoration: const InputDecoration(labelText: 'Quantity (optional)')),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    value: category,
-                    items: ['Grocery','Gadgets','Stationery','Books','Clothing']
-                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                        .toList(),
-                    onChanged: (v) { if (v != null) setState(() => category = v); },
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: _determinePosition,
-                        icon: const Icon(Icons.my_location),
-                        label: const Text('Use my location'),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton.icon(
-                        onPressed: () => _tabController.animateTo(1),
-                        icon: const Icon(Icons.list),
-                        label: const Text('View nearby'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  if (_sending)
-                    const Center(child: CircularProgressIndicator())
-                  else
-                    ElevatedButton(onPressed: _sendRequest, child: const Text('Send Request')),
-                ],
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextFormField(controller: _nameCtl, decoration: const InputDecoration(labelText: 'Item name')),
+                const SizedBox(height: 8),
+                TextFormField(controller: _descCtl, decoration: const InputDecoration(labelText: 'Description')),
+                const SizedBox(height: 8),
+                TextFormField(controller: _qtyCtl, decoration: const InputDecoration(labelText: 'Quantity (optional)')),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: category,
+                  items: ['Grocery','Gadgets','Stationery','Books','Clothing'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                  onChanged: (v) { if (v != null) setState(() => category = v); },
+                ),
+                const SizedBox(height: 12),
+                Row(children: [
+                  ElevatedButton.icon(onPressed: _determinePosition, icon: const Icon(Icons.my_location), label: const Text('Use my location')),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(onPressed: () => _tabController.animateTo(1), icon: const Icon(Icons.list), label: const Text('View nearby')),
+                ]),
+                const SizedBox(height: 12),
+                if (_sending) const Center(child: CircularProgressIndicator())
+                else ElevatedButton(onPressed: _sendRequest, child: const Text('Send Request')),
+              ],
             ),
           ),
 
@@ -203,12 +166,13 @@ class _RequestingForItemPageState extends State<RequestingForItemPage>
                 if (!snap.hasData) return const Center(child: CircularProgressIndicator());
                 final docs = snap.data!.docs.where((d) {
                   final data = d.data();
-                  if (data['userId'] == user?.uid) return false;
+                  if (data['userId'] == user?.uid) return false; // don't show own
                   if (_pos == null || data['locationGeoPoint'] == null) return false;
-
                   try {
-                    final gp = data['locationGeoPoint'] as GeoPoint;
-                    final dist = _distanceMeters(_pos!.latitude, _pos!.longitude, gp.latitude, gp.longitude);
+                    final gp = data['locationGeoPoint'];
+                    final lat = gp.latitude as double;
+                    final lon = gp.longitude as double;
+                    final dist = _distanceMeters(_pos!.latitude, _pos!.longitude, lat, lon);
                     return dist <= 1000.0;
                   } catch (_) { return false; }
                 }).toList();
@@ -222,8 +186,7 @@ class _RequestingForItemPageState extends State<RequestingForItemPage>
                   itemBuilder: (context, index) {
                     final r = docs[index];
                     final data = r.data();
-                    final requester = data['userEmail'] ?? data['userId'] ?? 'Unknown';
-
+                    final requester = data['userEmail'] ?? data['userId'];
                     return Card(
                       child: Padding(
                         padding: const EdgeInsets.all(12.0),
@@ -234,30 +197,24 @@ class _RequestingForItemPageState extends State<RequestingForItemPage>
                             const SizedBox(height: 6),
                             Text(data['description'] ?? ''),
                             const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                ElevatedButton(
-                                  onPressed: () async { await _offerForRequest(r.id); },
-                                  child: const Text('I have this'),
-                                ),
-                                const SizedBox(width: 8),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    final uid = data['userId'];
-                                    if (uid != null && uid.isNotEmpty) {
-                                      Navigator.push(context, MaterialPageRoute(
-                                        builder: (_) => ChatScreen(
-                                          otherUserId: uid,
-                                          otherUserName: requester,
-                                          itemId: r.id,
-                                        ),
-                                      ));
-                                    }
-                                  },
-                                  child: const Text('Chat'),
-                                ),
-                              ],
-                            ),
+                            Row(children: [
+                              ElevatedButton(
+                                onPressed: () async {
+                                  await _offerForRequest(r.id, data);
+                                },
+                                child: const Text('I have this'),
+                              ),
+                              const SizedBox(width: 8),
+                              ElevatedButton(
+                                onPressed: () {
+                                  // open chat with requester
+                                  if (data['userId'] != null) {
+                                    Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(otherUserId: data['userId'], otherUserName: requester)));
+                                  }
+                                },
+                                child: const Text('Chat'),
+                              ),
+                            ]),
                           ],
                         ),
                       ),
