@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'theme/app_theme.dart';
 import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 import 'dart:async';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -97,9 +98,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   void initState() {
     super.initState();
     _checkInCart();
-    _tabController = TabController(length: 4, vsync: this);
-    _pageController = PageController();
-    _startAutoPlay();
+    _tabController = TabController(length: 2, vsync: this);
+
+    // Load images synchronously first
+    _imagesList = _images;
+    _loadingImages = _imagesList.isEmpty;
+    _currentImageCount = _imagesList.length;
+    _pageIndex = 0;
+    _pageController = PageController(initialPage: 0);
+
+    if (_loadingImages) {
+      _loadImagesFromFirestore();
+    } else {
+      if (_currentImageCount > 1) {
+        _startAutoPlay();
+      }
+    }
   }
 
   @override
@@ -338,13 +352,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     );
   }
 
-  void _copyShareLink() {
+  void _shareLink() {
     final link =
         widget.itemData['link'] ?? 'https://example.com/item/${widget.itemId}';
-    Clipboard.setData(ClipboardData(text: link));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Product link copied to clipboard')),
-    );
+    Share.share(link);
   }
 
   @override
@@ -487,7 +498,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                     ),
                   ),
                   IconButton(
-                    onPressed: _copyShareLink,
+                    onPressed: _shareLink,
                     icon: const Icon(Icons.share, color: Colors.black54),
                   ),
                 ],
@@ -797,6 +808,4 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       ),
     );
   }
-
-
 }
