@@ -13,7 +13,6 @@ import 'profile_screen.dart';
 import 'wishlist_screen.dart';
 import 'requests_screen.dart';
 import 'product_detail_screen.dart';
-import 'requesting_for_item_page.dart';
 import 'messages_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -378,14 +377,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   onPressed: () {
                     Navigator.push(
                         context, MaterialPageRoute(builder: (_) => const RequestsScreen()));
-                  },
-                ),
-                IconButton(
-                  icon: Icon(Icons.request_page, color: AppTheme.mediumBrown),
-                  tooltip: 'Request Item',
-                  onPressed: () {
-                    Navigator.push(
-                        context, MaterialPageRoute(builder: (_) => const RequestingForItemPage()));
                   },
                 ),
               ]
