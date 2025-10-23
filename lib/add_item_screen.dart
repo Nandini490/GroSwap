@@ -83,7 +83,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
       setState(() => _isUploadingImage = false);
     } catch (e) {
       setState(() => _isUploadingImage = false);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error picking images: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error picking images: ₹e')));
     }
   }
 

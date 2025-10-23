@@ -311,7 +311,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     borderRadius: BorderRadius.circular(6),
                                     child: (imageUrl.isNotEmpty)
                                         ? Image.network(imageUrl, width: double.infinity, height: double.infinity, fit: BoxFit.cover)
-                                        : Image.asset('assets/images/logo.png', fit: BoxFit.cover),
+                                        : Image.asset('assets/images/placeholder.jpg', fit: BoxFit.cover),
                                   ),
                                 ),
                                 const SizedBox(height: 8),

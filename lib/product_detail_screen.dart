@@ -289,60 +289,66 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       ),
     );
 
-        return AspectRatio(
-          aspectRatio: 16 / 9,
-          child: Stack(
-            children: [
-              PageView.builder(
-                controller: _pageController,
-                physics: const PageScrollPhysics(),
-                itemCount: images.length,
-                onPageChanged: (idx) => setState(() => _pageIndex = idx),
-                itemBuilder: (context, index) {
-                  final url = images[index];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-                    child: Hero(
-                      tag: 'product_${widget.itemId}_$index',
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.08),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
+    return AspectRatio(
+      aspectRatio: 16 / 9,
+      child: Stack(
+        children: [
+          PageView.builder(
+            controller: _pageController,
+            physics: const PageScrollPhysics(),
+            itemCount: _imagesList.length,
+            onPageChanged: (idx) {
+              setState(() => _pageIndex = idx);
+              if (!_expectingPageChange) {
+                _autoPlayTimer?.cancel();
+                _startAutoPlay();
+              } else {
+                _expectingPageChange = false;
+              }
+            },
+            itemBuilder: (context, index) {
+              final url = _imagesList[index];
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                child: Hero(
+                  tag: 'product_${widget.itemId}_$index',
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
                           ),
-                          child: Image.network(
-                            url,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            loadingBuilder: (context, child, prog) {
-                              if (prog == null) return child;
-                              return const Center(child: CircularProgressIndicator());
-                            },
-                            errorBuilder: (context, _, __) => Image.asset(
-                              'assets/images/placeholder.jpg',
-                              fit: BoxFit.cover,
-                            ),
-                          ),
+                        ],
+                      ),
+                      child: Image.network(
+                        url,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, prog) {
+                          if (prog == null) return child;
+                          return const Center(child: CircularProgressIndicator());
+                        },
+                        errorBuilder: (context, _, __) => Image.asset(
+                          'assets/images/placeholder.jpg',
+                          fit: BoxFit.cover,
                         ),
                       ),
                     ),
-                  );
-                },
-              ),
-              leftArrow,
-              rightArrow,
-              dots,
-            ],
+                  ),
+                ),
+              );
+            },
           ),
-        );
-      },
+          leftArrow,
+          rightArrow,
+          dots,
+        ],
+      ),
     );
   }
 
@@ -372,7 +378,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     final seller = sellerRaw.contains('@')
         ? sellerRaw.split('@')[0]
         : sellerRaw;
-  final discountPercent = data['discountPercent'] ?? 0;
+    final mrp = (data['mrp'] ?? data['price'] ?? 0).toString();
+    final discountPercent = data['discountPercent'] ?? 0;
     // expiry is displayed in the description tab (if present)
 
     return Scaffold(
@@ -454,6 +461,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                   color: Colors.green,
                 ),
               ),
+              const SizedBox(height: 8),
+              if (mrp != price)
+                Text(
+                  'MRP: ₹$mrp',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
+                    decoration: TextDecoration.lineThrough,
+                  ),
+                ),
               const SizedBox(height: 12),
 
               // Seller info & actions

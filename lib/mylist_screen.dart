@@ -274,7 +274,7 @@ class _MyListScreenState extends State<MyListScreen> {
           // prefer a local fallback image to avoid network failures on web/offline
           final imageUrl = (rawUrl != null && rawUrl.toString().isNotEmpty)
             ? rawUrl.toString()
-            : 'assets/images/logo.png';
+            : 'assets/images/placeholder.jpg';
           final bool isNetworkImage = imageUrl.startsWith('http') && !imageUrl.contains('via.placeholder.com');
 
                   DateTime? expiryDate;
@@ -327,7 +327,7 @@ class _MyListScreenState extends State<MyListScreen> {
                                   ),
                                 )
                               : Image.asset(
-                                  'assets/images/logo.png',
+                                  'assets/images/placeholder.jpg',
                                   width: 55,
                                   height: 55,
                                   fit: BoxFit.cover,
