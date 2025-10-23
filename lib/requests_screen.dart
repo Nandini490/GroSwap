@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'theme/app_theme.dart';
 
 class RequestsScreen extends StatelessWidget {
@@ -12,10 +13,61 @@ class RequestsScreen extends StatelessWidget {
     String status,
     BuildContext context,
   ) async {
-    await FirebaseFirestore.instance
-        .collection('requests')
-        .doc(docId)
-        .update({'status': status});
+    final reqRef = FirebaseFirestore.instance.collection('requests').doc(docId);
+    await reqRef.update({'status': status});
+
+    // If accepted, also mark the referenced item as accepted/unavailable so it
+    // is removed from Home listings for everyone.
+    try {
+      final reqSnap = await reqRef.get();
+  final reqData = reqSnap.data() ?? <String, dynamic>{};
+      final itemId = (reqData['itemId'] ?? '').toString();
+      if (status == 'accepted' && itemId.isNotEmpty) {
+        try {
+          final batch = FirebaseFirestore.instance.batch();
+
+          // Attempt to delete from `items` collection if present
+          final itemRef = FirebaseFirestore.instance.collection('items').doc(itemId);
+          final itemSnap = await itemRef.get();
+          if (itemSnap.exists) batch.delete(itemRef);
+
+          // Also attempt to delete from `products` collection (some deployments use this name)
+          final prodRef = FirebaseFirestore.instance.collection('products').doc(itemId);
+          final prodSnap = await prodRef.get();
+          if (prodSnap.exists) batch.delete(prodRef);
+
+          // Delete any mylist entries referencing this item
+          final mylistQuery = await FirebaseFirestore.instance
+              .collection('mylist')
+              .where('itemId', isEqualTo: itemId)
+              .get();
+          for (var d in mylistQuery.docs) batch.delete(d.reference);
+
+          // Delete any cart entries referencing this item
+          final cartQuery = await FirebaseFirestore.instance
+              .collection('cart')
+              .where('itemId', isEqualTo: itemId)
+              .get();
+          for (var d in cartQuery.docs) batch.delete(d.reference);
+
+          // Delete other requests for this item (leave the current request - it is already updated)
+          final otherReqs = await FirebaseFirestore.instance
+              .collection('requests')
+              .where('itemId', isEqualTo: itemId)
+              .get();
+          for (var d in otherReqs.docs) {
+            if (d.id != docId) batch.delete(d.reference);
+          }
+
+          await batch.commit();
+        } catch (e) {
+          if (kDebugMode) print('Error deleting item and related docs: $e');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) print('Failed to mark item accepted: $e');
+    }
+
     // ignore: use_build_context_synchronously
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
