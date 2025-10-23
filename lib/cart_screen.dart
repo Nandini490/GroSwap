@@ -5,6 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:groswap/chat_screen.dart';
 import 'product_detail_screen.dart';
+import 'my_orders_screen.dart';
+import 'widgets/received_product_button.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -19,11 +21,23 @@ class _CartScreenState extends State<CartScreen> {
     final userId = FirebaseAuth.instance.currentUser!.uid;
 
     return Scaffold(
-  backgroundColor: AppTheme.warmBeige,
+      backgroundColor: AppTheme.warmBeige,
       appBar: AppBar(
         title: const Text('My Cart', style: TextStyle(color: Color(0xFF6B4C3B))),
         centerTitle: true,
         backgroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.shopping_bag_outlined),
+            tooltip: 'My Orders',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const MyOrdersScreen()),
+              );
+            },
+          ),
+        ],
         // keep icons black for contrast, only the title text is medium brown
         iconTheme: const IconThemeData(color: Colors.black),
         elevation: 0,
@@ -115,7 +129,7 @@ class _CartScreenState extends State<CartScreen> {
                               title: const Text('Item no longer available'),
                               trailing: IconButton(
                                 icon: const Icon(Icons.delete, color: Colors.redAccent),
-                                  onPressed: () {
+                                onPressed: () {
                                   FirebaseFirestore.instance.collection('cart').doc(cartItem.id).delete();
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
@@ -174,19 +188,19 @@ class _CartScreenState extends State<CartScreen> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                    Text(name,
-                      style: TextStyle(
-                        color: AppTheme.mediumBrown,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14),
+                                        Text(name,
+                                            style: TextStyle(
+                                              color: AppTheme.mediumBrown,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis),
-                    Text(
-                      '${type.isNotEmpty ? "$type • " : ""}₹$price',
-                      style: TextStyle(
-                        color: AppTheme.mediumBrown.withOpacity(0.85),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500)),
+                                        Text(
+                                          '${type.isNotEmpty ? "$type • " : ""}₹$price',
+                                          style: TextStyle(
+                                            color: AppTheme.mediumBrown.withOpacity(0.85),
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w500)),
                                       ],
                                     ),
                                   ),
@@ -271,77 +285,105 @@ class _CartScreenState extends State<CartScreen> {
                                               .where('itemId', isEqualTo: cartItem['itemId'] ?? '')
                                               .snapshots(),
                                           builder: (context, rs) {
-                                            if (!rs.hasData || rs.data!.docs.isEmpty) return const SizedBox.shrink();
-                                            final r = rs.data!.docs.first;
-                                            final st = (r['status'] ?? 'pending').toString();
-                                            String label;
-                                            Color color;
-                                            switch (st) {
-                                              case 'accepted':
-                                                label = '🟢 Accepted';
-                                                color = Colors.green;
-                                                break;
-                                              case 'rejected':
-                                                label = '🔴 Rejected';
-                                                color = Colors.red;
-                                                break;
-                                              default:
-                                                label = '🟡 Pending';
-                                                color = Colors.orange;
+                                            if (!rs.hasData || rs.data!.docs.isEmpty) {
+                                              return const SizedBox.shrink();
                                             }
 
-                                            return Wrap(
-                                              crossAxisAlignment: WrapCrossAlignment.center,
-                                              spacing: 6,
+                                            final r = rs.data!.docs.first;
+                                            final st = (r['status'] ?? 'pending').toString();
+
+                                            Widget buildStatusWidget() {
+                                              final (String label, Color color) = switch (st) {
+                                                'accepted' => ('🟢 Accepted', Colors.green),
+                                                'rejected' => ('🔴 Rejected', Colors.red),
+                                                _ => ('🟡 Pending', Colors.orange),
+                                              };
+
+                                              return Text(
+                                                label,
+                                                style: TextStyle(
+                                                  color: color,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w600
+                                                )
+                                              );
+                                            }
+
+                                            if (st != 'accepted') {
+                                              return buildStatusWidget();
+                                            }
+
+                                            return Column(
+                                              crossAxisAlignment: CrossAxisAlignment.end,
+                                              mainAxisSize: MainAxisSize.min,
                                               children: [
-                                                Text(label,
-                                                    style: TextStyle(
-                                                        color: color,
-                                                        fontSize: 10,
-                                                        fontWeight: FontWeight.w600)),
-                                                if (st == 'accepted')
-                                                  FutureBuilder<DocumentSnapshot?>(
-                                                    future: FirebaseFirestore.instance.collection('users').doc(ownerId).get(),
-                                                    builder: (context, ownerSnap) {
-                                                      if (!ownerSnap.hasData || !ownerSnap.data!.exists)
-                                                        return const SizedBox.shrink();
-                                                      final ownerData = ownerSnap.data!.data() as Map<String, dynamic>?;
+                                                Row(
+                                                  mainAxisAlignment: MainAxisAlignment.end,
+                                                  children: [
+                                                    buildStatusWidget(),
+                                                    FutureBuilder<DocumentSnapshot>(
+                                                      future: FirebaseFirestore.instance
+                                                          .collection('users')
+                                                          .doc(ownerId)
+                                                          .get(),
+                                                      builder: (context, ownerSnap) {
+                                                        if (!ownerSnap.hasData || !ownerSnap.data!.exists) {
+                                                          return const SizedBox.shrink();
+                                                        }
+                                                        
+                                                        final ownerData = ownerSnap.data!.data() as Map<String, dynamic>?;
+                                                        final ownerPhone = (ownerData?['phone'] ?? '').toString();
+                                                        final ownerName = (ownerData?['name'] ?? 'Seller').toString();
 
-                                                      final ownerPhone = (ownerData?['phone'] ?? '').toString();
-                                                      final ownerName = (ownerData?['name'] ?? 'Seller').toString();
-
-                                                      return Row(
-                                                        mainAxisSize: MainAxisSize.min,
-                                                        children: [
-                                                          IconButton(
-                                                            icon: const Icon(Icons.call, color: Colors.green, size: 14),
-                                                            padding: EdgeInsets.zero,
-                                                            constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-                                                            onPressed: ownerPhone.isNotEmpty
-                                                                ? () async {
-                                                                    final uri = Uri(scheme: 'tel', path: ownerPhone);
-                                                                    if (await canLaunchUrl(uri)) await launchUrl(uri);
-                                                                  }
-                                                                : null,
-                                                          ),
-                                                          IconButton(
-                                                            icon: const Icon(Icons.message, color: Color(0xFFE07A5F), size: 14),
-                                                            padding: EdgeInsets.zero,
-                                                            constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-                                                            onPressed: () {
-                                                              Navigator.push(
+                                                        return Row(
+                                                          mainAxisSize: MainAxisSize.min,
+                                                          children: [
+                                                            IconButton(
+                                                              icon: const Icon(Icons.call, color: Colors.green, size: 14),
+                                                              padding: EdgeInsets.zero,
+                                                              constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                                                              onPressed: ownerPhone.isNotEmpty
+                                                                  ? () async {
+                                                                      final uri = Uri(scheme: 'tel', path: ownerPhone);
+                                                                      if (await canLaunchUrl(uri)) {
+                                                                        await launchUrl(uri);
+                                                                      }
+                                                                    }
+                                                                  : null,
+                                                            ),
+                                                            IconButton(
+                                                              icon: const Icon(Icons.message, color: Color(0xFFE07A5F), size: 14),
+                                                              padding: EdgeInsets.zero,
+                                                              constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                                                              onPressed: () {
+                                                                Navigator.push(
                                                                   context,
                                                                   MaterialPageRoute(
-                                                                      builder: (_) => ChatScreen(
-                                                                          otherUserId: ownerId,
-                                                                          otherUserName: ownerName,
-                                                                          itemId: cartItem['itemId'] ?? '')));
-                                                            },
-                                                          ),
-                                                        ],
-                                                      );
-                                                    },
-                                                  ),
+                                                                    builder: (_) => ChatScreen(
+                                                                      otherUserId: ownerId,
+                                                                      otherUserName: ownerName,
+                                                                      itemId: cartItem['itemId'] ?? ''
+                                                                    )
+                                                                  )
+                                                                );
+                                                              },
+                                                            ),
+                                                          ],
+                                                        );
+                                                      },
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 8),
+                                                ReceivedProductButton(
+                                                  itemId: cartItem['itemId'] ?? '',
+                                                  itemName: name,
+                                                  imageUrl: displayImages.isNotEmpty ? displayImages.first : '',
+                                                  price: price,
+                                                  buyerId: userId,
+                                                  sellerId: ownerId,
+                                                  cartItemId: cartItem.id,
+                                                ),
                                               ],
                                             );
                                           },

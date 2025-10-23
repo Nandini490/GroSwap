@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'dart:math';
 
 import 'chat_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class RequestingForItemPage extends StatefulWidget {
   const RequestingForItemPage({super.key});
@@ -95,10 +96,26 @@ class _RequestingForItemPageState extends State<RequestingForItemPage>
           // ignore: do nothing — location optional but recommended
         }
       }
+      // fetch user profile (name, phone) if available
+      String userName = user.email ?? '';
+      String userPhone = '';
+      try {
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        if (userDoc.exists) {
+          final udata = userDoc.data();
+          if (udata != null) {
+            userName = (udata['name'] ?? userName).toString();
+            userPhone = (udata['phone'] ?? '').toString();
+          }
+        }
+      } catch (_) {}
+
       final data = {
         'userId': user.uid,
         'userEmail': user.email ?? '',
-        'name': name,
+        'userName': userName,
+        'userPhone': userPhone,
+        'itemName': name,
         'description': _descCtl.text.trim(),
         'quantity': _qtyCtl.text.trim(),
         'category': category,
@@ -109,8 +126,8 @@ class _RequestingForItemPageState extends State<RequestingForItemPage>
         data['locationGeoPoint'] = GeoPoint(_pos!.latitude, _pos!.longitude);
       }
 
-      final doc =
-          await FirebaseFirestore.instance.collection('requests').add(data);
+    final doc =
+      await FirebaseFirestore.instance.collection('requests').add(data);
 
       await FirebaseFirestore.instance.collection('my_requests').add({
         'userId': user.uid,
@@ -132,21 +149,7 @@ class _RequestingForItemPageState extends State<RequestingForItemPage>
     }
   }
 
-  Future<void> _offerForRequest(String requestId) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-    final offerRef = FirebaseFirestore.instance
-        .collection('requests')
-        .doc(requestId)
-        .collection('offers');
-    await offerRef.add({
-      'responderId': user.uid,
-      'responderEmail': user.email ?? '',
-      'timestamp': FieldValue.serverTimestamp(),
-    });
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Offer sent')));
-  }
+  
 
   @override
   Widget build(BuildContext context) {
@@ -259,31 +262,42 @@ class _RequestingForItemPageState extends State<RequestingForItemPage>
                 itemBuilder: (context, index) {
                   final r = docs[index];
                   final data = r.data();
-                  final requester = (data['userEmail'] ?? data['userId'] ?? '').toString();
+                  final requesterName = (data['userName'] ?? data['userEmail'] ?? data['userId'] ?? '').toString();
+                  final itemName = (data['itemName'] ?? data['name'] ?? 'Unnamed').toString();
+                  final requesterPhone = (data['userPhone'] ?? '').toString();
 
                   return Card(
-                    color: AppTheme.mediumBrown.withOpacity(0.95),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     child: Padding(
                       padding: const EdgeInsets.all(12.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
                         children: [
-                          Text(data['name'] ?? 'Unnamed',
-                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-                          const SizedBox(height: 6),
-                          Text(data['description'] ?? '', style: const TextStyle(color: Colors.white70)),
-                          const SizedBox(height: 8),
-                          Row(
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(itemName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 6),
+                                Text('Requested by: $requesterName', style: const TextStyle(color: Colors.black87)),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Column(
                             children: [
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.terracotta),
-                                onPressed: () async => await _offerForRequest(r.id),
-                                child: const Text('I have this'),
+                              // Call button
+                              IconButton(
+                                icon: const Icon(Icons.call, color: Colors.green),
+                                onPressed: requesterPhone.isNotEmpty
+                                    ? () async {
+                                        final uri = Uri(scheme: 'tel', path: requesterPhone);
+                                        if (await canLaunchUrl(uri)) await launchUrl(uri);
+                                      }
+                                    : null,
                               ),
-                              const SizedBox(width: 8),
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.terracotta),
+                              // Message button
+                              IconButton(
+                                icon: const Icon(Icons.message, color: AppTheme.terracotta),
                                 onPressed: () {
                                   final otherId = data['userId'] ?? '';
                                   if (otherId.isNotEmpty) {
@@ -292,14 +306,13 @@ class _RequestingForItemPageState extends State<RequestingForItemPage>
                                       MaterialPageRoute(
                                         builder: (_) => ChatScreen(
                                           otherUserId: otherId,
-                                          otherUserName: requester,
-                                          itemId: r.id, // <-- fix applied
+                                          otherUserName: requesterName,
+                                          itemId: r.id,
                                         ),
                                       ),
                                     );
                                   }
                                 },
-                                child: const Text('Chat'),
                               ),
                             ],
                           ),
