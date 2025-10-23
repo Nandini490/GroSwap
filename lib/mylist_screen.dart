@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'theme/app_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'product_detail_screen.dart';
@@ -61,8 +62,8 @@ class _MyListScreenState extends State<MyListScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(color: Color(0xFF507B7B)),
+      builder: (context) => Center(
+        child: CircularProgressIndicator(color: AppTheme.terracotta),
       ),
     );
 
@@ -87,8 +88,8 @@ class _MyListScreenState extends State<MyListScreen> {
 
       await batch.commit();
 
-      // pop loading
-      if (mounted) Navigator.of(context).pop();
+        // pop loading
+        if (mounted) Navigator.of(context).pop();
 
       if (mounted)
         ScaffoldMessenger.of(
@@ -146,7 +147,7 @@ class _MyListScreenState extends State<MyListScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel", style: TextStyle(color: Colors.teal)),
+              child: const Text("Cancel", style: TextStyle(color: Color(0xFFE07A5F))),
             ),
             TextButton(
               onPressed: () async {
@@ -163,7 +164,7 @@ class _MyListScreenState extends State<MyListScreen> {
                   const SnackBar(content: Text("Item updated successfully")),
                 );
               },
-              child: const Text("Save", style: TextStyle(color: Colors.teal)),
+              child: const Text("Save", style: TextStyle(color: Color(0xFFE07A5F))),
             ),
           ],
         );
@@ -174,7 +175,7 @@ class _MyListScreenState extends State<MyListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFEDF4F3),
+      backgroundColor: AppTheme.warmBeige,
       appBar: AppBar(
         title: const Text('My List', style: TextStyle(color: Colors.black)),
         backgroundColor: Colors.white,
@@ -190,8 +191,8 @@ class _MyListScreenState extends State<MyListScreen> {
             .snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
-            return const Center(
-              child: CircularProgressIndicator(color: Color(0xFF507B7B)),
+            return Center(
+              child: CircularProgressIndicator(color: AppTheme.terracotta),
             );
           }
 
@@ -222,14 +223,12 @@ class _MyListScreenState extends State<MyListScreen> {
                     .get(),
                 builder: (context, itemSnap) {
                   if (itemSnap.connectionState == ConnectionState.waiting) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8),
-                      child: SizedBox(
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: const SizedBox(
                         height: 72,
                         child: Center(
-                          child: CircularProgressIndicator(
-                            color: Color(0xFF507B7B),
-                          ),
+                          child: CircularProgressIndicator(),
                         ),
                       ),
                     );
@@ -271,11 +270,12 @@ class _MyListScreenState extends State<MyListScreen> {
                   final price = data['price'] ?? 0;
                   final quantity = data['quantity'] ?? '';
                   final unit = data['unit'] ?? '';
-                  final rawUrl = data['imageUrl'];
-                  final imageUrl =
-                      (rawUrl != null && rawUrl.toString().isNotEmpty)
-                      ? rawUrl.toString()
-                      : 'https://via.placeholder.com/150';
+          final rawUrl = data['imageUrl'];
+          // prefer a local fallback image to avoid network failures on web/offline
+          final imageUrl = (rawUrl != null && rawUrl.toString().isNotEmpty)
+            ? rawUrl.toString()
+            : 'assets/images/logo.png';
+          final bool isNetworkImage = imageUrl.startsWith('http') && !imageUrl.contains('via.placeholder.com');
 
                   DateTime? expiryDate;
                   if (data['expiryDate'] != null) {
@@ -310,22 +310,28 @@ class _MyListScreenState extends State<MyListScreen> {
                         ),
                         leading: ClipRRect(
                           borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            imageUrl,
-                            width: 55,
-                            height: 55,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                Container(
+                          child: isNetworkImage
+                              ? Image.network(
+                                  imageUrl,
                                   width: 55,
                                   height: 55,
-                                  color: Colors.grey[300],
-                                  child: const Icon(
-                                    Icons.image_not_supported,
-                                    color: Colors.grey,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) => Container(
+                                    width: 55,
+                                    height: 55,
+                                    color: Colors.grey[300],
+                                    child: const Icon(
+                                      Icons.image_not_supported,
+                                      color: Colors.grey,
+                                    ),
                                   ),
+                                )
+                              : Image.asset(
+                                  'assets/images/logo.png',
+                                  width: 55,
+                                  height: 55,
+                                  fit: BoxFit.cover,
                                 ),
-                          ),
                         ),
                         title: Text(
                           name,

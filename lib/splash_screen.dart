@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'theme/app_theme.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -42,9 +43,9 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF507B7B), Color(0xFF3A5F5F)], // Light → Dark teal
+            colors: [AppTheme.terracotta, AppTheme.mediumBrown],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -57,7 +58,7 @@ class _SplashScreenState extends State<SplashScreen>
               children: [
                 // Logo
                 Image.asset(
-                  'assets/images/image.jpg', // Your logo path
+                  'assets/images/logo.png',
                   width: 160,
                   height: 160,
                 ),

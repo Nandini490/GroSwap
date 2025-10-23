@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'theme/app_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'dart:async';
@@ -345,7 +346,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                               return const Center(child: CircularProgressIndicator());
                             },
                             errorBuilder: (context, _, __) => Image.asset(
-                              'assets/images/placeholder.jpg',
+                              'assets/images/logo.png',
                               fit: BoxFit.cover,
                             ),
                           ),
@@ -393,8 +394,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     final seller = sellerRaw.contains('@')
         ? sellerRaw.split('@')[0]
         : sellerRaw;
-    final mrp = (data['mrp'] ?? data['price'] ?? 0).toString();
-    final discountPercent = data['discountPercent'] ?? 0;
+  final discountPercent = data['discountPercent'] ?? 0;
     // expiry is displayed in the description tab (if present)
 
     return Scaffold(
@@ -476,16 +476,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                   color: Colors.green,
                 ),
               ),
-              const SizedBox(height: 8),
-              if (mrp != price)
-                Text(
-                  'MRP: ₹$mrp',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                    decoration: TextDecoration.lineThrough,
-                  ),
-                ),
               const SizedBox(height: 12),
 
               // Seller info & actions
@@ -583,7 +573,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       controller: _tabController,
                       labelColor: Colors.black,
                       unselectedLabelColor: Colors.black54,
-                      indicatorColor: const Color(0xFF507B7B),
+                      indicatorColor: AppTheme.terracotta,
                       tabs: const [
                         Tab(text: 'Description'),
                         Tab(text: 'Specifications'),
@@ -615,6 +605,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   }
 
   Widget _buildRatingRow(String ratingStr) {
+    // Hide rating if it's '0' or empty
+    if (ratingStr.trim().isEmpty) return const SizedBox.shrink();
+    final numeric = double.tryParse(ratingStr) ?? 0.0;
+    if (numeric <= 0) return const SizedBox.shrink();
     // Show rating number only (no star icons)
     return Row(
       children: [
@@ -638,7 +632,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           gradient: LinearGradient(
             colors: accent
                 ? [Colors.deepOrange, Colors.orange]
-                : [Color(0xFF507B7B), Color(0xFF2F6F6F)],
+                : [AppTheme.terracotta, const Color(0xFF2F6F6F)],
           ),
           borderRadius: BorderRadius.circular(10),
           boxShadow: [

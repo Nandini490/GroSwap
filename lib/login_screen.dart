@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'theme/app_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'main.dart'; // For AuthGate navigation
 
@@ -40,7 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Error: $e", style: const TextStyle(color: Colors.white)),
-          backgroundColor: const Color(0xFF507B7B),
+          backgroundColor: AppTheme.terracotta,
         ),
       );
     }
@@ -58,7 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF507B7B), // soft teal background
+  backgroundColor: AppTheme.warmBeige, // soft background
       body: Center(
         child: Container(
           width: size.width * 0.85,
@@ -90,10 +91,11 @@ class _LoginScreenState extends State<LoginScreen> {
               // Email
               TextField(
                 controller: _emailController,
-                style: const TextStyle(color: Colors.black87),
+                style: TextStyle(color: AppTheme.mediumBrown),
                 decoration: InputDecoration(
                   hintText: "Email",
-                  prefixIcon: const Icon(Icons.person, color: Color(0xFF507B7B)),
+                  hintStyle: TextStyle(color: AppTheme.mediumBrown.withOpacity(0.6)),
+                  prefixIcon: const Icon(Icons.person, color: Color(0xFFE07A5F)),
                   filled: true,
                   fillColor: Colors.grey.shade100,
                   border: OutlineInputBorder(
@@ -108,14 +110,15 @@ class _LoginScreenState extends State<LoginScreen> {
               TextField(
                 controller: _passwordController,
                 obscureText: _obscureText,
-                style: const TextStyle(color: Colors.black87),
+                style: TextStyle(color: AppTheme.mediumBrown),
                 decoration: InputDecoration(
                   hintText: "Password",
-                  prefixIcon: const Icon(Icons.lock, color: Color(0xFF507B7B)),
+                  hintStyle: TextStyle(color: AppTheme.mediumBrown.withOpacity(0.6)),
+                  prefixIcon: const Icon(Icons.lock, color: Color(0xFFE07A5F)),
                   suffixIcon: IconButton(
                     icon: Icon(
                       _obscureText ? Icons.visibility : Icons.visibility_off,
-                      color: const Color(0xFF507B7B),
+                      color: const Color(0xFFE07A5F),
                     ),
                     onPressed: () => setState(() => _obscureText = !_obscureText),
                   ),
@@ -135,7 +138,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: ElevatedButton(
                   onPressed: _submit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF507B7B), // teal button
+                    backgroundColor: AppTheme.terracotta, // primary button
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(

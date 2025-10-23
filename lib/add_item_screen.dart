@@ -9,6 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' show LatLng;
 import 'package:cloud_firestore/cloud_firestore.dart' show GeoPoint;
 import 'profile_screen.dart' show MapPickerScreen;
+import 'theme/app_theme.dart';
 
 class AddItemScreen extends StatefulWidget {
   const AddItemScreen({super.key});
@@ -220,7 +221,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Item added successfully!'), backgroundColor: Color(0xFF507B7B)),
+          SnackBar(content: const Text('✅ Item added successfully!'), backgroundColor: AppTheme.terracotta),
         );
         Navigator.pop(context);
       }
@@ -249,7 +250,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF507B7B),
+      backgroundColor: AppTheme.warmBeige,
       appBar: AppBar(
         title: const Text('Add Item', style: TextStyle(color: Colors.black)),
         backgroundColor: Colors.white,
@@ -334,13 +335,13 @@ class _AddItemScreenState extends State<AddItemScreen> {
                             onPressed: _isUploadingImage ? null : _pickImages,
                             icon: const Icon(Icons.add),
                             label: const Text('Add Photos'),
-                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF507B7B)),
+                            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.terracotta),
                           ),
                           ElevatedButton.icon(
                             onPressed: _isUploadingImage ? null : _takePhoto,
                             icon: const Icon(Icons.camera_alt),
                             label: const Text('Take Photo'),
-                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF507B7B)),
+                            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.terracotta),
                           ),
                           if (_isUploadingImage) const Text('Uploading...', style: TextStyle(color: Colors.white)),
                           if (!_isUploadingImage && _uploadedImageUrls.isNotEmpty)
@@ -399,7 +400,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                         onPressed: _useCurrentLocation,
                         icon: const Icon(Icons.my_location),
                         label: const Text('Use current location'),
-                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF507B7B)),
+                        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.terracotta),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -408,7 +409,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                         onPressed: _pickLocationOnMap,
                         icon: const Icon(Icons.map),
                         label: const Text('Pick on map'),
-                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF507B7B)),
+                        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.terracotta),
                       ),
                     ),
                   ],
@@ -425,7 +426,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                       label: Text(_selectedExpiryDate == null
                           ? 'Select Expiry Date'
                           : 'Expiry: ${_selectedExpiryDate!.toLocal().toString().split(' ')[0]}'),
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF507B7B)),
+                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.terracotta),
                     ),
                   ),
 
@@ -461,7 +462,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                           label: Text(_rentalStartDate == null
                               ? 'Rental Start Date'
                               : '${_rentalStartDate!.toLocal().toString().split(' ')[0]}'),
-                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF507B7B)),
+                          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.terracotta),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -472,7 +473,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                           label: Text(_rentalEndDate == null
                               ? 'Rental End Date'
                               : '${_rentalEndDate!.toLocal().toString().split(' ')[0]}'),
-                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF507B7B)),
+                          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.terracotta),
                         ),
                       ),
                     ],
@@ -492,17 +493,17 @@ class _AddItemScreenState extends State<AddItemScreen> {
                           );
                           if (specs != null && specs is Map<String, dynamic>) setState(() => _specs = specs);
                         },
-                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF507B7B), padding: const EdgeInsets.symmetric(vertical: 14)),
+                        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.terracotta, padding: const EdgeInsets.symmetric(vertical: 14)),
                         child: Text(_specs == null ? 'Add Specifications' : 'Edit Specifications'),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: _isLoading
-                          ? const CircularProgressIndicator(color: Colors.teal)
+                          ? CircularProgressIndicator(color: AppTheme.terracotta)
                           : ElevatedButton(
                               onPressed: _saveItem,
-                              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF507B7B), padding: const EdgeInsets.symmetric(vertical: 14)),
+                              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.terracotta, padding: const EdgeInsets.symmetric(vertical: 14)),
                               child: const Text("Save Item", style: TextStyle(fontSize: 16, color: Colors.white)),
                             ),
                     ),

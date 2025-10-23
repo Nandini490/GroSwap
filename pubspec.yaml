@@ -59,4 +59,4 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/placeholder.jpg
+    - assets/images/logo.png

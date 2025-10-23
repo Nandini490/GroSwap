@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'theme/app_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'product_detail_screen.dart';
@@ -19,7 +20,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
       backgroundColor: const Color(0xFFEDF4F3),
       appBar: AppBar(
         title: const Text('Wishlist', style: TextStyle(color: Colors.white)),
-        backgroundColor: const Color(0xFF507B7B),
+  backgroundColor: AppTheme.terracotta,
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
       ),
@@ -58,7 +59,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
 
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
-              child: CircularProgressIndicator(color: Color(0xFF507B7B)),
+              child: CircularProgressIndicator(color: AppTheme.terracotta),
             );
           }
 
@@ -137,7 +138,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
                           height: 72,
                           child: Center(
                             child: CircularProgressIndicator(
-                              color: Colors.teal,
+                              color: AppTheme.terracotta,
                             ),
                           ),
                         ),
