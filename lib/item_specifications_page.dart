@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'theme/app_theme.dart';
 
 class ItemSpecificationsPage extends StatefulWidget {
   final String category;
@@ -107,7 +108,7 @@ class _ItemSpecificationsPageState extends State<ItemSpecificationsPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('${widget.category} Specifications'),
-        backgroundColor: const Color(0xFF507B7B),
+  backgroundColor: AppTheme.terracotta,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(12),
@@ -141,7 +142,7 @@ class _ItemSpecificationsPageState extends State<ItemSpecificationsPage> {
                               : 'Expiry: ${_expiryDate!.toLocal().toString().split(' ')[0]}',
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF507B7B),
+                          backgroundColor: AppTheme.terracotta,
                         ),
                       ),
                     ),
@@ -157,7 +158,7 @@ class _ItemSpecificationsPageState extends State<ItemSpecificationsPage> {
                               : 'Purchased: ${_purchaseDate!.toLocal().toString().split(' ')[0]}',
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF507B7B),
+                          backgroundColor: AppTheme.terracotta,
                         ),
                       ),
                     ),
@@ -168,7 +169,7 @@ class _ItemSpecificationsPageState extends State<ItemSpecificationsPage> {
                         child: ElevatedButton(
                           onPressed: _submit,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF507B7B),
+                            backgroundColor: AppTheme.terracotta,
                           ),
                           child: const Text('Save Specifications'),
                         ),

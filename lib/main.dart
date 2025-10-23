@@ -6,6 +6,7 @@ import 'login_screen.dart';
 import 'home_screen.dart';
 import 'splash_screen.dart';
 import 'item_specifications_page.dart';
+import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,40 +25,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Resourcely',
-      theme: ThemeData(
-        scaffoldBackgroundColor: const Color(0xFF507B7B),
-        primaryColor: const Color(0xFF507B7B),
-
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.white,
-          hintStyle: const TextStyle(color: Colors.black54),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide.none,
-          ),
-        ),
-
-        textTheme: const TextTheme(
-          bodyMedium: TextStyle(color: Colors.black87),
-        ),
-
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF507B7B),
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
-          ),
-        ),
-
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF507B7B),
-          foregroundColor: Colors.white,
-        ),
-      ),
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: ThemeMode.system,
 
       // Show SplashScreen first
       // Register named routes so SplashScreen can navigate without importing main.dart
@@ -93,7 +63,7 @@ class AuthGate extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(
-              child: CircularProgressIndicator(color: Color(0xFF507B7B)),
+              child: CircularProgressIndicator(color: AppTheme.terracotta),
             ),
           );
         }

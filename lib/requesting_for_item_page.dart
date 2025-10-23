@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'theme/app_theme.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:math';
 
@@ -77,6 +78,23 @@ class _RequestingForItemPageState extends State<RequestingForItemPage>
     }
     setState(() => _sending = true);
     try {
+      // Ensure we have a location for the request so it appears in Nearby Requests.
+      if (_pos == null) {
+        try {
+          if (await Geolocator.isLocationServiceEnabled()) {
+            LocationPermission permission = await Geolocator.checkPermission();
+            if (permission == LocationPermission.denied) {
+              permission = await Geolocator.requestPermission();
+            }
+            if (permission != LocationPermission.denied && permission != LocationPermission.deniedForever) {
+              final p = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+              if (mounted) setState(() => _pos = p);
+            }
+          }
+        } catch (_) {
+          // ignore: do nothing — location optional but recommended
+        }
+      }
       final data = {
         'userId': user.uid,
         'userEmail': user.email ?? '',
@@ -87,8 +105,9 @@ class _RequestingForItemPageState extends State<RequestingForItemPage>
         'status': 'open',
         'timestamp': FieldValue.serverTimestamp(),
       };
-      if (_pos != null)
+      if (_pos != null) {
         data['locationGeoPoint'] = GeoPoint(_pos!.latitude, _pos!.longitude);
+      }
 
       final doc =
           await FirebaseFirestore.instance.collection('requests').add(data);
@@ -135,9 +154,11 @@ class _RequestingForItemPageState extends State<RequestingForItemPage>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Request Item'),
-        backgroundColor: const Color(0xFF507B7B),
+        backgroundColor: AppTheme.terracotta,
         bottom: TabBar(
           controller: _tabController,
+          labelColor: AppTheme.mediumBrown,
+          unselectedLabelColor: AppTheme.mediumBrown.withOpacity(0.6),
           tabs: const [Tab(text: 'Request'), Tab(text: 'Nearby Requests')],
         ),
       ),
@@ -152,15 +173,34 @@ class _RequestingForItemPageState extends State<RequestingForItemPage>
               children: [
                 TextFormField(
                     controller: _nameCtl,
-                    decoration: const InputDecoration(labelText: 'Item name')),
+                    decoration: InputDecoration(
+                      labelText: 'Item name',
+                      filled: true,
+                      fillColor: AppTheme.warmBeige.withOpacity(0.6),
+                      labelStyle: const TextStyle(color: Colors.black87),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    )),
                 const SizedBox(height: 8),
                 TextFormField(
                     controller: _descCtl,
-                    decoration: const InputDecoration(labelText: 'Description')),
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      labelText: 'Description',
+                      filled: true,
+                      fillColor: AppTheme.warmBeige.withOpacity(0.6),
+                      labelStyle: const TextStyle(color: Colors.black87),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    )),
                 const SizedBox(height: 8),
                 TextFormField(
                     controller: _qtyCtl,
-                    decoration: const InputDecoration(labelText: 'Quantity (optional)')),
+                    decoration: InputDecoration(
+                      labelText: 'Quantity (optional)',
+                      filled: true,
+                      fillColor: AppTheme.warmBeige.withOpacity(0.6),
+                      labelStyle: const TextStyle(color: Colors.black87),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    )),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   value: category,
@@ -210,7 +250,7 @@ class _RequestingForItemPageState extends State<RequestingForItemPage>
                 return dist <= 1000.0;
               }).toList();
 
-              if (docs.isEmpty) return const Center(child: Text('No nearby requests'));
+              if (docs.isEmpty) return const Center(child: Text('No nearby requests', style: TextStyle(color: Color(0xFF6B4C3B))));
 
               return ListView.separated(
                 padding: const EdgeInsets.all(12),
@@ -222,24 +262,28 @@ class _RequestingForItemPageState extends State<RequestingForItemPage>
                   final requester = (data['userEmail'] ?? data['userId'] ?? '').toString();
 
                   return Card(
+                    color: AppTheme.mediumBrown.withOpacity(0.95),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     child: Padding(
                       padding: const EdgeInsets.all(12.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(data['name'] ?? 'Unnamed',
-                              style: const TextStyle(fontWeight: FontWeight.bold)),
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
                           const SizedBox(height: 6),
-                          Text(data['description'] ?? ''),
+                          Text(data['description'] ?? '', style: const TextStyle(color: Colors.white70)),
                           const SizedBox(height: 8),
                           Row(
                             children: [
                               ElevatedButton(
+                                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.terracotta),
                                 onPressed: () async => await _offerForRequest(r.id),
                                 child: const Text('I have this'),
                               ),
                               const SizedBox(width: 8),
                               ElevatedButton(
+                                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.terracotta),
                                 onPressed: () {
                                   final otherId = data['userId'] ?? '';
                                   if (otherId.isNotEmpty) {

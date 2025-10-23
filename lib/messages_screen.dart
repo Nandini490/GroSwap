@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'theme/app_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'chat_screen.dart';
@@ -19,10 +20,10 @@ class MessagesScreen extends StatelessWidget {
     final now = DateTime.now();
     final diff = now.difference(timestamp);
 
-    if (diff.inDays == 0) return DateFormat.jm().format(timestamp);       // e.g., 2:45 PM
+    if (diff.inDays == 0) return DateFormat.jm().format(timestamp); // e.g., 2:45 PM
     if (diff.inDays == 1) return 'Yesterday';
-    if (diff.inDays < 7) return DateFormat.E().format(timestamp);         // e.g., Mon
-    return DateFormat('dd/MM/yy').format(timestamp);                     // e.g., 19/10/25
+    if (diff.inDays < 7) return DateFormat.E().format(timestamp); // e.g., Mon
+    return DateFormat('dd/MM/yy').format(timestamp); // e.g., 19/10/25
   }
 
   @override
@@ -32,17 +33,11 @@ class MessagesScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Messages'),
-        backgroundColor: const Color(0xFF507B7B),
+        backgroundColor: AppTheme.warmBeige,
         centerTitle: true,
       ),
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF004D40), Color(0xFF00796B)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
+        color: AppTheme.warmBeige,
         child: StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
               .collection('messages')
@@ -51,20 +46,19 @@ class MessagesScreen extends StatelessWidget {
               .snapshots(),
           builder: (context, snapshot) {
             if (!snapshot.hasData) {
-              return const Center(
-                  child: CircularProgressIndicator(color: Colors.white));
+              return const Center(child: CircularProgressIndicator());
             }
 
             // Group messages by chatId → latest message only
             final Map<String, QueryDocumentSnapshot> latestByChat = {};
             for (var doc in snapshot.data!.docs) {
               final data = doc.data() as Map<String, dynamic>;
-              final chatId = data['chatId'] ?? '';
+              final chatId = (data['chatId'] ?? '').toString();
               if (chatId.isEmpty) continue;
 
-              final ts = (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime(1970);
+              final ts = (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.fromMillisecondsSinceEpoch(0);
               final existing = latestByChat[chatId];
-              final existingTs = (existing?.get('timestamp') as Timestamp?)?.toDate() ?? DateTime(1970);
+              final existingTs = (existing?.get('timestamp') as Timestamp?)?.toDate() ?? DateTime.fromMillisecondsSinceEpoch(0);
 
               if (existing == null || ts.isAfter(existingTs)) {
                 latestByChat[chatId] = doc;
@@ -73,15 +67,13 @@ class MessagesScreen extends StatelessWidget {
 
             final chats = latestByChat.values.toList()
               ..sort((a, b) {
-                final tsA = (a['timestamp'] as Timestamp?)?.toDate() ?? DateTime(1970);
-                final tsB = (b['timestamp'] as Timestamp?)?.toDate() ?? DateTime(1970);
+                final tsA = (a['timestamp'] as Timestamp?)?.toDate() ?? DateTime.fromMillisecondsSinceEpoch(0);
+                final tsB = (b['timestamp'] as Timestamp?)?.toDate() ?? DateTime.fromMillisecondsSinceEpoch(0);
                 return tsB.compareTo(tsA);
               });
 
             if (chats.isEmpty) {
-              return const Center(
-                  child: Text('No messages yet',
-                      style: TextStyle(color: Colors.white70, fontSize: 16)));
+              return const Center(child: Text('No messages yet', style: TextStyle(color: Colors.black54, fontSize: 16)));
             }
 
             return ListView.builder(
@@ -105,8 +97,10 @@ class MessagesScreen extends StatelessWidget {
                   builder: (context, snap) {
                     final otherUserName = snap.data ?? 'User';
 
+                    // Conversation card: use a solid medium/dark brown so it's not blurry/light
+                    final unreadCount = (data['unreadCount'] as int?) ?? (isUnread ? 1 : 0);
                     return Card(
-                      color: Colors.white.withOpacity(0.15),
+                      color: AppTheme.mediumBrown.withOpacity(0.95),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       margin: const EdgeInsets.symmetric(vertical: 6),
                       child: ListTile(
@@ -115,7 +109,7 @@ class MessagesScreen extends StatelessWidget {
                           children: [
                             CircleAvatar(
                               radius: 26,
-                              backgroundColor: const Color(0xFF80CBC4),
+                              backgroundColor: AppTheme.terracotta.withOpacity(0.18),
                               child: Text(
                                 otherUserName.isNotEmpty ? otherUserName[0].toUpperCase() : '?',
                                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
@@ -137,12 +131,27 @@ class MessagesScreen extends StatelessWidget {
                               ),
                           ],
                         ),
-                        title: Text(
-                          otherUserName,
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: isUnread ? FontWeight.bold : FontWeight.w600,
-                              fontSize: 16),
+                        title: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                  otherUserName,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: isUnread ? FontWeight.bold : FontWeight.w700,
+                    fontSize: 16),
+                              ),
+                            ),
+                            if (unreadCount > 0)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.terracotta,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text('$unreadCount', style: const TextStyle(color: Colors.white, fontSize: 12)),
+                              ),
+                          ],
                         ),
                         subtitle: Text(
                           preview,
@@ -155,20 +164,18 @@ class MessagesScreen extends StatelessWidget {
                         trailing: timestamp != null
                             ? Text(
                                 _formatTimestamp(timestamp),
-                                style: const TextStyle(color: Colors.white60, fontSize: 12),
+                                style: const TextStyle(color: Colors.white70, fontSize: 12),
                               )
                             : null,
                         onTap: () async {
                           // Mark messages as read
                           final messagesRef = FirebaseFirestore.instance.collection('messages');
-                          final chatId = data['chatId'] ?? '';
+                          final chatId = (data['chatId'] ?? '').toString();
 
-                          final unreadMessages = await messagesRef
-                              .where('chatId', isEqualTo: chatId)
-                              .get();
+                          final unreadMessages = await messagesRef.where('chatId', isEqualTo: chatId).get();
 
                           for (var msg in unreadMessages.docs) {
-                            final msgData = msg.data();
+                            final msgData = msg.data() as Map<String, dynamic>;
                             final readList = (msgData['readBy'] as List?)?.cast<String>() ?? [];
                             if (!readList.contains(currentUserId)) {
                               await msg.reference.update({

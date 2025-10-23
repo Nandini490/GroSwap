@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'theme/app_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -94,7 +95,7 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Chat with ${widget.otherUserName}'),
-        backgroundColor: const Color(0xFF507B7B),
+  backgroundColor: AppTheme.warmBeige,
         centerTitle: true,
       ),
       body: Column(
@@ -145,14 +146,14 @@ class _ChatScreenState extends State<ChatScreen> {
                             maxWidth: MediaQuery.of(context).size.width * 0.75),
                         decoration: BoxDecoration(
                           color: isMe
-                              ? const Color(0xFF507B7B)
-                              : Colors.grey.shade300,
+                              ? AppTheme.terracotta
+                              : AppTheme.mediumBrown.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           text,
                           style: TextStyle(
-                            color: isMe ? Colors.white : Colors.black87,
+                            color: isMe ? Colors.white : AppTheme.mediumBrown,
                             fontSize: 15,
                           ),
                         ),
@@ -185,7 +186,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                   const SizedBox(width: 8),
                   CircleAvatar(
-                    backgroundColor: const Color(0xFF507B7B),
+                    backgroundColor: AppTheme.terracotta,
                     child: IconButton(
                       icon: const Icon(Icons.send, color: Colors.white),
                       onPressed: _sendMessage,

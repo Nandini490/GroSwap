@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'theme/app_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:math';
 import 'package:geolocator/geolocator.dart';
@@ -25,7 +26,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   String selectedCategory = 'All';
-  String selectedSort = 'None';
+  String selectedSort = 'Sort by';
   int _selectedIndex = 0;
   Position? _currentPosition;
   bool _locationDenied = false;
@@ -41,7 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   final List<String> sortOptions = [
-    'None',
+    'Sort by',
     'Price: Low → High',
     'Price: High → Low',
     'Expiry: Soonest First',
@@ -56,28 +57,28 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _determinePosition() async {
     try {
       if (!await Geolocator.isLocationServiceEnabled()) {
-        setState(() => _locationDenied = true);
+        if (mounted) setState(() => _locationDenied = true);
         return;
       }
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          setState(() => _locationDenied = true);
+          if (mounted) setState(() => _locationDenied = true);
           return;
         }
       }
       if (permission == LocationPermission.deniedForever) {
-        setState(() => _locationDenied = true);
+        if (mounted) setState(() => _locationDenied = true);
         return;
       }
 
       final pos = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.best,
       );
-      setState(() => _currentPosition = pos);
+      if (mounted) setState(() => _currentPosition = pos);
     } catch (_) {
-      setState(() => _locationDenied = true);
+      if (mounted) setState(() => _locationDenied = true);
     }
   }
 
@@ -131,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 controller: _searchController,
                 decoration: InputDecoration(
                   hintText: 'Search items...',
-                  prefixIcon: const Icon(Icons.search, color: Color(0xFF507B7B)),
+                  prefixIcon: const Icon(Icons.search, color: Color(0xFFE07A5F)),
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(
@@ -150,12 +151,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF507B7B),
+                        color: const Color(0xFFE07A5F),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: DropdownButton<String>(
                         value: selectedCategory,
-                        dropdownColor: const Color(0xFF507B7B),
+                        dropdownColor: const Color(0xFFE07A5F),
                         style: const TextStyle(color: Colors.white),
                         underline: const SizedBox(),
                         isExpanded: true,
@@ -177,12 +178,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF507B7B),
+                        color: const Color(0xFFE07A5F),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: DropdownButton<String>(
                         value: selectedSort,
-                        dropdownColor: const Color(0xFF507B7B),
+                        dropdownColor: const Color(0xFFE07A5F),
                         style: const TextStyle(color: Colors.white),
                         underline: const SizedBox(),
                         isExpanded: true,
@@ -207,8 +208,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 stream: itemsQuery.snapshots(),
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) {
-                    return const Center(
-                        child: CircularProgressIndicator(color: Color(0xFF507B7B)));
+                    return Center(
+                      child: CircularProgressIndicator(color: AppTheme.terracotta),
+                    );
                   }
 
                   final items = snapshot.data!.docs.where((doc) {
@@ -309,7 +311,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     borderRadius: BorderRadius.circular(6),
                                     child: (imageUrl.isNotEmpty)
                                         ? Image.network(imageUrl, width: double.infinity, height: double.infinity, fit: BoxFit.cover)
-                                        : Image.asset('assets/images/placeholder.jpg', fit: BoxFit.cover),
+                                        : Image.asset('assets/images/logo.png', fit: BoxFit.cover),
                                   ),
                                 ),
                                 const SizedBox(height: 8),
@@ -355,19 +357,19 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Resourcely'),
-        backgroundColor: const Color(0xFF507B7B),
+  backgroundColor: AppTheme.warmBeige,
         elevation: 0,
         actions: _selectedIndex == 0
             ? [
                 IconButton(
-                  icon: const Icon(Icons.favorite, color: Colors.white),
+                  icon: Icon(Icons.favorite, color: AppTheme.mediumBrown),
                   onPressed: () {
                     Navigator.push(
                         context, MaterialPageRoute(builder: (_) => const WishlistScreen()));
                   },
                 ),
                 IconButton(
-                  icon: const Icon(Icons.pending_actions, color: Colors.white),
+                  icon: Icon(Icons.pending_actions, color: AppTheme.mediumBrown),
                   tooltip: 'Requests',
                   onPressed: () {
                     Navigator.push(
@@ -375,7 +377,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                 ),
                 IconButton(
-                  icon: const Icon(Icons.request_page, color: Colors.white),
+                  icon: Icon(Icons.request_page, color: AppTheme.mediumBrown),
                   tooltip: 'Request Item',
                   onPressed: () {
                     Navigator.push(
@@ -392,16 +394,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.push(
                     context, MaterialPageRoute(builder: (_) => const AddItemScreen()));
               },
-              backgroundColor: const Color(0xFF507B7B),
+              backgroundColor: AppTheme.terracotta,
               child: const Icon(Icons.add, color: Colors.white),
             )
           : null,
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.white70,
-        onTap: _onBottomNavTap,
-        backgroundColor: const Color(0xFF507B7B),
+  bottomNavigationBar: BottomNavigationBar(
+    currentIndex: _selectedIndex,
+    selectedItemColor: AppTheme.mediumBrown,
+    unselectedItemColor: AppTheme.mediumBrown.withOpacity(0.6),
+    onTap: _onBottomNavTap,
+  backgroundColor: AppTheme.warmBeige,
         type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),

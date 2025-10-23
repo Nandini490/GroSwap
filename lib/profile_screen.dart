@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'theme/app_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -43,7 +44,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadProfile() async {
     if (user == null) return;
-    setState(() => _loading = true);
+  if (!mounted) return;
+  setState(() => _loading = true);
     try {
       final doc = await FirebaseFirestore.instance.collection('users').doc(user!.uid).get();
       if (doc.exists) {
@@ -56,7 +58,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (e) {
       _showSnack("Error loading profile: $e");
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -68,7 +70,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         maxHeight: 300,
         imageQuality: 70,
       );
-      if (picked != null) setState(() => _profileImage = File(picked.path));
+      if (picked != null && mounted) setState(() => _profileImage = File(picked.path));
     } catch (e) {
       _showSnack("Error picking image: $e");
     }
@@ -95,7 +97,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (placemarks.isNotEmpty) {
         final place = placemarks.first;
-        setState(() {
+        if (mounted) setState(() {
           _addressController.text = "${place.street}, ${place.locality}, ${place.country}";
         });
       }
@@ -115,7 +117,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final placemarks = await placemarkFromCoordinates(picked.latitude, picked.longitude);
         if (placemarks.isNotEmpty) {
           final place = placemarks.first;
-          setState(() {
+          if (mounted) setState(() {
             _addressController.text = "${place.street}, ${place.locality}, ${place.country}";
           });
         }
@@ -175,18 +177,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
             },
           );
 
-      setState(() => _profileImageUrl = imageUrl);
-      _showSnack("Profile saved successfully!");
+      if (mounted) setState(() => _profileImageUrl = imageUrl);
+      if (mounted) _showSnack("Profile saved successfully!");
     } catch (e) {
-      _showSnack("Error saving profile: $e");
+      if (mounted) _showSnack("Error saving profile: $e");
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
   void _showSnack(String msg) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.teal),
+      SnackBar(content: Text(msg), backgroundColor: AppTheme.terracotta),
     );
   }
 
@@ -205,8 +208,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         iconTheme: const IconThemeData(color: Colors.black),
         elevation: 0,
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF507B7B)))
+    body: _loading
+      ? Center(child: CircularProgressIndicator(color: AppTheme.terracotta))
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Form(
@@ -278,7 +281,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             onPressed: _getCurrentLocation,
                             icon: const Icon(Icons.my_location),
                             label: const Text("Auto Location"),
-                            style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF507B7B)),
+                            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.terracotta),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -287,7 +290,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             onPressed: _pickOnMap,
                             icon: const Icon(Icons.map),
                             label: const Text("Pick on Map"),
-                            style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF507B7B)),
+                            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.terracotta),
                           ),
                         ),
                       ],
@@ -296,7 +299,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ElevatedButton(
                       onPressed: _saveProfile,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF507B7B),
+                        backgroundColor: AppTheme.terracotta,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       child: const Text("Save Profile"),
@@ -352,8 +355,8 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
       Position pos = await Geolocator.getCurrentPosition();
       _initialLocation = LatLng(pos.latitude, pos.longitude);
       _mapController?.animateCamera(CameraUpdate.newLatLngZoom(_initialLocation, 15));
-    } catch (_) {}
-    setState(() => _loading = false);
+  } catch (_) {}
+  if (mounted) setState(() => _loading = false);
   }
 
   void _onMapTap(LatLng position) {
@@ -378,8 +381,8 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
         ],
         elevation: 0,
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF507B7B)))
+    body: _loading
+      ? Center(child: CircularProgressIndicator(color: AppTheme.terracotta))
           : GoogleMap(
               initialCameraPosition: CameraPosition(target: _initialLocation, zoom: 15),
               onTap: _onMapTap,

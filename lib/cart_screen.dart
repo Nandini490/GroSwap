@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'theme/app_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -18,11 +19,12 @@ class _CartScreenState extends State<CartScreen> {
     final userId = FirebaseAuth.instance.currentUser!.uid;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF507B7B),
+  backgroundColor: AppTheme.warmBeige,
       appBar: AppBar(
-        title: const Text('My Cart', style: TextStyle(color: Colors.black)),
+        title: const Text('My Cart', style: TextStyle(color: Color(0xFF6B4C3B))),
         centerTitle: true,
         backgroundColor: Colors.white,
+        // keep icons black for contrast, only the title text is medium brown
         iconTheme: const IconThemeData(color: Colors.black),
         elevation: 0,
       ),
@@ -113,12 +115,12 @@ class _CartScreenState extends State<CartScreen> {
                               title: const Text('Item no longer available'),
                               trailing: IconButton(
                                 icon: const Icon(Icons.delete, color: Colors.redAccent),
-                                onPressed: () {
+                                  onPressed: () {
                                   FirebaseFirestore.instance.collection('cart').doc(cartItem.id).delete();
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        content: Text('Item removed from cart'),
-                                        backgroundColor: Color(0xFF507B7B)));
+                                    SnackBar(
+                                        content: const Text('Item removed from cart'),
+                                        backgroundColor: AppTheme.terracotta));
                                 },
                               ),
                             ),
@@ -172,19 +174,19 @@ class _CartScreenState extends State<CartScreen> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text(name,
-                                            style: const TextStyle(
-                                                color: Colors.black87,
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 14),
+                    Text(name,
+                      style: TextStyle(
+                        color: AppTheme.mediumBrown,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis),
-                                        Text(
-                                            '${type.isNotEmpty ? "$type • " : ""}₹$price',
-                                            style: const TextStyle(
-                                                color: Color(0xFF6B6B6B),
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w500)),
+                    Text(
+                      '${type.isNotEmpty ? "$type • " : ""}₹$price',
+                      style: TextStyle(
+                        color: AppTheme.mediumBrown.withOpacity(0.85),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500)),
                                       ],
                                     ),
                                   ),
@@ -204,9 +206,9 @@ class _CartScreenState extends State<CartScreen> {
                                               await FirebaseFirestore.instance.collection('cart').doc(cartItem.id).delete();
                                               if (mounted)
                                                 ScaffoldMessenger.of(context).showSnackBar(
-                                                  const SnackBar(
-                                                      content: Text('Item removed from cart'),
-                                                      backgroundColor: Color(0xFF507B7B)));
+                                                  SnackBar(
+                                                      content: const Text('Item removed from cart'),
+                                                      backgroundColor: AppTheme.terracotta));
                                             } catch (e) {
                                               if (mounted)
                                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -227,7 +229,7 @@ class _CartScreenState extends State<CartScreen> {
                                             final hasRequest = reqSnap.hasData && reqSnap.data!.docs.isNotEmpty;
                                             return ElevatedButton(
                                               style: ElevatedButton.styleFrom(
-                                                  backgroundColor: const Color(0xFF507B7B),
+                                                  backgroundColor: AppTheme.terracotta,
                                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                                   minimumSize: const Size(0, 0),
                                                   tapTargetSize: MaterialTapTargetSize.shrinkWrap),
@@ -323,7 +325,7 @@ class _CartScreenState extends State<CartScreen> {
                                                                 : null,
                                                           ),
                                                           IconButton(
-                                                            icon: const Icon(Icons.message, color: Color(0xFF507B7B), size: 14),
+                                                            icon: const Icon(Icons.message, color: Color(0xFFE07A5F), size: 14),
                                                             padding: EdgeInsets.zero,
                                                             constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
                                                             onPressed: () {
@@ -374,7 +376,7 @@ class _CartScreenState extends State<CartScreen> {
                         ),
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF507B7B),
+                              backgroundColor: AppTheme.terracotta,
                               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12)),
                           onPressed: () {
                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(

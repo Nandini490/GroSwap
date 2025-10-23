@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'theme/app_theme.dart';
 
 class RequestsScreen extends StatelessWidget {
   const RequestsScreen({super.key});
@@ -30,7 +31,7 @@ class RequestsScreen extends StatelessWidget {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Requests'),
-          backgroundColor: const Color(0xFF507B7B),
+          backgroundColor: AppTheme.terracotta,
         ),
         body: const Center(child: Text('Not signed in')),
       );
@@ -41,7 +42,7 @@ class RequestsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Requests'),
-        backgroundColor: const Color(0xFF507B7B),
+  backgroundColor: AppTheme.terracotta,
         centerTitle: true,
       ),
       body: StreamBuilder<QuerySnapshot>(
@@ -55,7 +56,7 @@ class RequestsScreen extends StatelessWidget {
           }
           if (!snap.hasData) {
             return const Center(
-              child: CircularProgressIndicator(color: Color(0xFF507B7B)),
+              child: CircularProgressIndicator(color: AppTheme.terracotta),
             );
           }
 
