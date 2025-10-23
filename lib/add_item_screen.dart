@@ -357,7 +357,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                 const SizedBox(height: 16),
                 _buildTextField(_nameController, "Item Name", Icons.label),
                 const SizedBox(height: 12),
-                _buildTextField(_priceController, "Price", Icons.attach_money, inputType: TextInputType.number),
+                _buildTextField(_priceController, "Price", Icons.currency_rupee, inputType: TextInputType.number),
                 const SizedBox(height: 12),
                 _buildDropdown(
                   label: "Category",
@@ -433,7 +433,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                 // Rent-specific fields
                 if (selectedPurpose == 'Rent') ...[
                   const SizedBox(height: 12),
-                  _buildTextField(_rentalPriceController, "Rental Price", Icons.attach_money, inputType: TextInputType.number),
+                  _buildTextField(_rentalPriceController, "Rental Price", Icons.currency_rupee, inputType: TextInputType.number),
                   const SizedBox(height: 12),
                   _buildTextField(_depositController, "Deposit / Security Fee (Optional)", Icons.money_off, inputType: TextInputType.number),
                   const SizedBox(height: 12),

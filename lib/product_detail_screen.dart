@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'theme/app_theme.dart';
 import 'package:flutter/services.dart';
-import 'package:carousel_slider/carousel_slider.dart';
 import 'dart:async';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -98,6 +97,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   void initState() {
     super.initState();
     _checkInCart();
+<<<<<<<<< Temporary merge branch 1
     _tabController = TabController(length: 4, vsync: this);
 
     // Load images synchronously first
@@ -352,13 +352,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     );
   }
 
-  void _copyShareLink() {
+  void _shareLink() {
     final link =
         widget.itemData['link'] ?? 'https://example.com/item/${widget.itemId}';
-    Clipboard.setData(ClipboardData(text: link));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Product link copied to clipboard')),
-    );
+    Share.share(link);
   }
 
   @override
@@ -501,7 +498,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                     ),
                   ),
                   IconButton(
-                    onPressed: _copyShareLink,
+                    onPressed: _shareLink,
                     icon: const Icon(Icons.share, color: Colors.black54),
                   ),
                 ],
@@ -816,47 +813,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     );
   }
 
-  Widget _buildReviews() {
-    final List<Map<String, Object>> reviews = [
-      {
-        'name': 'Anita',
-        'rating': 5,
-        'text': 'Great product! Highly recommend.',
-      },
-      {'name': 'Raj', 'rating': 4, 'text': 'Good value for money.'},
-    ];
-    return ListView.separated(
-      padding: const EdgeInsets.all(12),
-      itemCount: reviews.length,
-      physics: const BouncingScrollPhysics(),
-      itemBuilder: (context, i) {
-        final r = reviews[i];
-        final String name = (r['name'] as String?) ?? 'User';
-        final int rating = (r['rating'] as int?) ?? 0;
-        final String text = (r['text'] as String?) ?? '';
-        return ListTile(
-          tileColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          leading: CircleAvatar(child: Text(name.isNotEmpty ? name[0] : '?')),
-          title: Row(
-            children: [
-              Text(name),
-              const SizedBox(width: 8),
-              Row(
-                children: List.generate(
-                  rating,
-                  (i) => const Icon(Icons.star, color: Colors.amber, size: 14),
-                ),
-              ),
-            ],
-          ),
-          subtitle: Text(text),
-        );
-      },
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-    );
-  }
 
+<<<<<<<<< Temporary merge branch 1
   Widget _buildRelatedProducts() {
     final related = List.generate(
       6,
@@ -923,3 +881,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     );
   }
 }
+=========
+}
+>>>>>>>>> Temporary merge branch 2
