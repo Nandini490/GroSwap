@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'theme/app_theme.dart';
 import 'package:flutter/services.dart';
-import 'package:carousel_slider/carousel_slider.dart';
 import 'dart:async';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -99,21 +98,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     super.initState();
     _checkInCart();
     _tabController = TabController(length: 4, vsync: this);
-
-    // Load images synchronously first
-    _imagesList = _images;
-    _loadingImages = _imagesList.isEmpty;
-    _currentImageCount = _imagesList.length;
-    _pageIndex = 0;
-    _pageController = PageController(initialPage: 0);
-
-    if (_loadingImages) {
-      _loadImagesFromFirestore();
-    } else {
-      if (_currentImageCount > 1) {
-        _startAutoPlay();
-      }
-    }
+    _pageController = PageController();
+    _startAutoPlay();
   }
 
   @override
@@ -570,11 +556,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       unselectedLabelColor: Colors.black54,
                       indicatorColor: AppTheme.terracotta,
                       tabs: const [
-                        Tab(text: 'Description'),
-                        Tab(text: 'Specifications'),
-                        Tab(text: 'Reviews'),
-                        Tab(text: 'Related'),
-                      ],
+                          Tab(text: 'Description'),
+                          Tab(text: 'Specifications'),
+                        ],
                     ),
                     SizedBox(
                       height: 360,
@@ -583,8 +567,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                         children: [
                           _buildDescription(desc),
                           _buildSpecifications(data),
-                          _buildReviews(),
-                          _buildRelatedProducts(),
                         ],
                       ),
                     ),
@@ -816,110 +798,5 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     );
   }
 
-  Widget _buildReviews() {
-    final List<Map<String, Object>> reviews = [
-      {
-        'name': 'Anita',
-        'rating': 5,
-        'text': 'Great product! Highly recommend.',
-      },
-      {'name': 'Raj', 'rating': 4, 'text': 'Good value for money.'},
-    ];
-    return ListView.separated(
-      padding: const EdgeInsets.all(12),
-      itemCount: reviews.length,
-      physics: const BouncingScrollPhysics(),
-      itemBuilder: (context, i) {
-        final r = reviews[i];
-        final String name = (r['name'] as String?) ?? 'User';
-        final int rating = (r['rating'] as int?) ?? 0;
-        final String text = (r['text'] as String?) ?? '';
-        return ListTile(
-          tileColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          leading: CircleAvatar(child: Text(name.isNotEmpty ? name[0] : '?')),
-          title: Row(
-            children: [
-              Text(name),
-              const SizedBox(width: 8),
-              Row(
-                children: List.generate(
-                  rating,
-                  (i) => const Icon(Icons.star, color: Colors.amber, size: 14),
-                ),
-              ),
-            ],
-          ),
-          subtitle: Text(text),
-        );
-      },
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-    );
-  }
 
-  Widget _buildRelatedProducts() {
-    final related = List.generate(
-      6,
-      (i) => {'name': 'Related $i', 'price': (100 + i * 20), 'image': null},
-    );
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: CarouselSlider.builder(
-        itemCount: related.length,
-        itemBuilder: (context, index, realIdx) {
-          final item = related[index];
-          return Container(
-            margin: const EdgeInsets.symmetric(horizontal: 6),
-            child: Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.image,
-                          size: 48,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      item['name'].toString(),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '₹${(item['price'] ?? 0).toString()}',
-                      style: const TextStyle(
-                        color: Colors.green,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-        options: CarouselOptions(
-          height: 220,
-          enlargeCenterPage: false,
-          enableInfiniteScroll: false,
-          viewportFraction: 0.45,
-        ),
-      ),
-    );
-  }
 }

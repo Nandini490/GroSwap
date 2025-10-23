@@ -215,6 +215,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   final items = snapshot.data!.docs.where((doc) {
                     final data = doc.data();
+                    // Exclude items that have been accepted or explicitly marked unavailable
+                    final status = (data['status'] ?? '').toString().toLowerCase();
+                    final availableFlag = data.containsKey('available') ? (data['available'] == true) : true;
+                    if (status == 'accepted' || availableFlag == false) return false;
                     final name = (data['name'] ?? '').toString().toLowerCase();
                     final search = _searchController.text.toLowerCase();
 
