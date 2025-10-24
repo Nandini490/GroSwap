@@ -64,3 +64,4 @@ flutter:
   assets:
     - assets/images/logo.png
     - assets/images/placeholder.jpg
+    - assets/images/logotransparent.png

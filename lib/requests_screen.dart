@@ -22,6 +22,7 @@ class RequestsScreen extends StatelessWidget {
       final reqSnap = await reqRef.get();
   final reqData = reqSnap.data() ?? <String, dynamic>{};
       final itemId = (reqData['itemId'] ?? '').toString();
+      final requesterId = (reqData['requesterId'] ?? '').toString();
       if (status == 'accepted' && itemId.isNotEmpty) {
         try {
           final batch = FirebaseFirestore.instance.batch();
@@ -43,10 +44,11 @@ class RequestsScreen extends StatelessWidget {
               .get();
           for (var d in mylistQuery.docs) batch.delete(d.reference);
 
-          // Delete any cart entries referencing this item
+          // Delete cart entries referencing this item, but exclude the requester's cart
           final cartQuery = await FirebaseFirestore.instance
               .collection('cart')
               .where('itemId', isEqualTo: itemId)
+              .where('userId', isNotEqualTo: requesterId)
               .get();
           for (var d in cartQuery.docs) batch.delete(d.reference);
 
@@ -142,7 +144,7 @@ class RequestsScreen extends StatelessWidget {
               final itemId = (data['itemId'] ?? '').toString();
 
               Color statusColor;
-              if (status == 'accepted') {
+              if (status == 'accepted' || status == 'completed') {
                 statusColor = Colors.green;
               } else if (status == 'rejected') {
                 statusColor = Colors.red;

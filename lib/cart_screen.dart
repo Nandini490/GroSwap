@@ -19,7 +19,7 @@ class _CartScreenState extends State<CartScreen> {
     final userId = FirebaseAuth.instance.currentUser!.uid;
 
     return Scaffold(
-  backgroundColor: AppTheme.warmBeige,
+      backgroundColor: AppTheme.warmBeige,
       appBar: AppBar(
         title: const Text('My Cart', style: TextStyle(color: Color(0xFF6B4C3B))),
         centerTitle: true,
@@ -107,252 +107,355 @@ class _CartScreenState extends State<CartScreen> {
                       itemBuilder: (context, index) {
                         final cartItem = cartDocs[index];
                         final itemDoc = itemsDocs[index];
+                        final itemId = cartItem['itemId'] ?? '';
 
-                        if (!itemDoc.exists) {
-                          return Card(
-                            margin: const EdgeInsets.symmetric(vertical: 6),
-                            child: ListTile(
-                              title: const Text('Item no longer available'),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.redAccent),
-                                  onPressed: () {
-                                  FirebaseFirestore.instance.collection('cart').doc(cartItem.id).delete();
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                        content: const Text('Item removed from cart'),
-                                        backgroundColor: AppTheme.terracotta));
-                                },
-                              ),
-                            ),
-                          );
-                        }
+                        return StreamBuilder<QuerySnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection('requests')
+                              .where('requesterId', isEqualTo: userId)
+                              .where('itemId', isEqualTo: itemId)
+                              .snapshots(),
+                          builder: (context, reqSnap) {
+                            final hasRequest = reqSnap.hasData && reqSnap.data!.docs.isNotEmpty;
+                            String status = 'none';
+                            Map<String, dynamic>? requestData;
+                            if (hasRequest) {
+                              final r = reqSnap.data!.docs.first;
+                              requestData = r.data() as Map<String, dynamic>? ?? {};
+                              status = (requestData['status'] ?? 'pending').toString();
+                            }
 
-                        final itemData = itemDoc.data() as Map<String, dynamic>? ?? {};
-                        final imageUrls = ((itemData['imageUrls'] as List<dynamic>?) ?? [])
-                            .map((e) => e.toString())
-                            .where((s) => s.isNotEmpty)
-                            .toList();
-                        final fallbackImage = (itemData['imageUrl'] ?? '').toString();
-                        final displayImages =
-                            imageUrls.isNotEmpty ? imageUrls : (fallbackImage.isNotEmpty ? [fallbackImage] : <String>[]);
+                            final itemExists = itemDoc.exists;
+                            final isUnavailable = !itemExists && status != 'accepted';
 
-                        final name = (itemData['name'] ?? 'Unnamed').toString();
-                        final ownerId = (itemData['userId'] ?? '').toString();
-                        final type = (itemData['type'] ?? itemData['category'] ?? '').toString();
-                        final price = itemData['price'] ?? 0;
-
-                        return Card(
-                          color: Colors.white,
-                          elevation: 3,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          margin: const EdgeInsets.symmetric(vertical: 6),
-                          child: InkWell(
-                            onTap: () {
-                              Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) => ProductDetailScreen(itemId: itemDoc.id, itemData: itemData)));
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: displayImages.isNotEmpty
-                                        ? Image.network(displayImages.first,
-                                            width: 50,
-                                            height: 50,
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (context, error, stackTrace) =>
-                                                const Icon(Icons.image, color: Colors.grey))
-                                        : const Icon(Icons.image, color: Colors.grey, size: 40),
+                            if (isUnavailable) {
+                              return Card(
+                                margin: const EdgeInsets.symmetric(vertical: 6),
+                                child: ListTile(
+                                  title: const Text('Item no longer available'),
+                                  trailing: IconButton(
+                                    icon: const Icon(Icons.delete, color: Colors.redAccent),
+                                    onPressed: () {
+                                      FirebaseFirestore.instance.collection('cart').doc(cartItem.id).delete();
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                            content: Text('Item removed from cart'),
+                                            backgroundColor: AppTheme.terracotta));
+                                    },
                                   ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                    Text(name,
-                      style: TextStyle(
-                        color: AppTheme.mediumBrown,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis),
-                    Text(
-                      '${type.isNotEmpty ? "$type • " : ""}₹$price',
-                      style: TextStyle(
-                        color: AppTheme.mediumBrown.withOpacity(0.85),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500)),
-                                      ],
-                                    ),
-                                  ),
-                                  ConstrainedBox(
-                                    constraints: const BoxConstraints(maxWidth: 120),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
-                                        IconButton(
-                                          icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
-                                          padding: EdgeInsets.zero,
-                                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                                          tooltip: 'Remove from cart',
-                                          onPressed: () async {
-                                            try {
-                                              await FirebaseFirestore.instance.collection('cart').doc(cartItem.id).delete();
-                                              if (mounted)
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  SnackBar(
-                                                      content: const Text('Item removed from cart'),
-                                                      backgroundColor: AppTheme.terracotta));
-                                            } catch (e) {
-                                              if (mounted)
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                    SnackBar(content: Text('Remove failed: $e')));
-                                            }
-                                          },
+                                ),
+                              );
+                            }
+
+                            // Prepare display data
+                            String name = 'Unnamed';
+                            dynamic price = 0;
+                            String typeStr = '';
+                            String ownerIdStr = '';
+                            List<String> imageList = [];
+                            bool canTapDetail = true;
+                            Map<String, dynamic>? itemDataForDetail;
+
+                            if (itemExists) {
+                              final itemData = itemDoc.data() as Map<String, dynamic>? ?? {};
+                              itemDataForDetail = itemData;
+                              final imageUrls = ((itemData['imageUrls'] as List<dynamic>?) ?? [])
+                                  .map((e) => e.toString())
+                                  .where((s) => s.isNotEmpty)
+                                  .toList();
+                              final fallbackImage = (itemData['imageUrl'] ?? '').toString();
+                              imageList = imageUrls.isNotEmpty
+                                  ? imageUrls
+                                  : (fallbackImage.isNotEmpty ? [fallbackImage] : <String>[]);
+                              name = (itemData['name'] ?? 'Unnamed').toString();
+                              ownerIdStr = (itemData['userId'] ?? '').toString();
+                              typeStr = (itemData['type'] ?? itemData['category'] ?? '').toString();
+                              price = itemData['price'] ?? 0;
+                            } else {
+                              // Accepted without item
+                              name = (requestData?['itemName'] ?? 'Unnamed').toString();
+                              price = requestData?['price'] ?? 0;
+                              ownerIdStr = (requestData?['ownerId'] ?? '').toString();
+                              canTapDetail = false;
+                            }
+
+                            final double priceNum = price is num ? price.toDouble() : 0.0;
+
+                            return Card(
+                              color: Colors.white,
+                              elevation: 3,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              margin: const EdgeInsets.symmetric(vertical: 6),
+                              child: InkWell(
+                                onTap: canTapDetail
+                                    ? () {
+                                        Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (_) => ProductDetailScreen(
+                                                    itemId: itemDoc.id, itemData: itemDataForDetail ?? {})));
+                                      }
+                                    : null,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: imageList.isNotEmpty
+                                            ? Image.network(
+                                                imageList.first,
+                                                width: 50,
+                                                height: 50,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (context, error, stackTrace) =>
+                                                    const Icon(Icons.image, color: Colors.grey),
+                                              )
+                                            : const Icon(Icons.image, color: Colors.grey, size: 40),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              name,
+                                              style: TextStyle(
+                                                color: AppTheme.mediumBrown,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 14,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            Text(
+                                              '${typeStr.isNotEmpty ? "$typeStr • " : ""}₹$priceNum',
+                                              style: TextStyle(
+                                                color: AppTheme.mediumBrown.withOpacity(0.85),
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        const SizedBox(height: 6),
-
-                                        // Place Order button
-                                        StreamBuilder<QuerySnapshot>(
-                                          stream: FirebaseFirestore.instance
-                                              .collection('requests')
-                                              .where('requesterId', isEqualTo: userId)
-                                              .where('itemId', isEqualTo: cartItem['itemId'] ?? '')
-                                              .snapshots(),
-                                          builder: (context, reqSnap) {
-                                            final hasRequest = reqSnap.hasData && reqSnap.data!.docs.isNotEmpty;
-                                            return ElevatedButton(
-                                              style: ElevatedButton.styleFrom(
+                                      ),
+                                      ConstrainedBox(
+                                        constraints: const BoxConstraints(maxWidth: 120),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          crossAxisAlignment: CrossAxisAlignment.end,
+                                          children: [
+                                            IconButton(
+                                              icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
+                                              padding: EdgeInsets.zero,
+                                              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                              tooltip: 'Remove from cart',
+                                              onPressed: () async {
+                                                try {
+                                                  await FirebaseFirestore.instance.collection('cart').doc(cartItem.id).delete();
+                                                  if (mounted)
+                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                      const SnackBar(
+                                                          content: Text('Item removed from cart'),
+                                                          backgroundColor: AppTheme.terracotta));
+                                                } catch (e) {
+                                                  if (mounted)
+                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                        SnackBar(content: Text('Remove failed: $e')));
+                                                }
+                                              },
+                                            ),
+                                            const SizedBox(height: 6),
+                                            if (itemExists) ...[
+                                              // Place Order button
+                                              ElevatedButton(
+                                                style: ElevatedButton.styleFrom(
                                                   backgroundColor: AppTheme.terracotta,
                                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                                   minimumSize: const Size(0, 0),
-                                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                                              onPressed: hasRequest
-                                                  ? null
-                                                  : () async {
-                                                      final user = FirebaseAuth.instance.currentUser;
-                                                      if (user == null) return;
-                                                      if (ownerId == user.uid) {
+                                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                ),
+                                                onPressed: hasRequest
+                                                    ? null
+                                                    : () async {
+                                                        final user = FirebaseAuth.instance.currentUser;
+                                                        if (user == null) return;
+                                                        if (ownerIdStr == user.uid) {
+                                                          ScaffoldMessenger.of(context).showSnackBar(
+                                                              const SnackBar(content: Text('Cannot order your own item')));
+                                                          return;
+                                                        }
+                                                        await FirebaseFirestore.instance.collection('requests').add({
+                                                          'itemId': itemId,
+                                                          'itemName': name,
+                                                          'price': priceNum,
+                                                          'requesterId': user.uid,
+                                                          'requesterEmail': user.email ?? '',
+                                                          'ownerId': ownerIdStr,
+                                                          'status': 'pending',
+                                                          'timestamp': FieldValue.serverTimestamp(),
+                                                        });
                                                         ScaffoldMessenger.of(context).showSnackBar(
-                                                            const SnackBar(content: Text('Cannot order your own item')));
-                                                        return;
-                                                      }
-                                                      await FirebaseFirestore.instance.collection('requests').add({
-                                                        'itemId': cartItem['itemId'],
-                                                        'itemName': name,
-                                                        'requesterId': user.uid,
-                                                        'requesterEmail': user.email ?? '',
-                                                        'ownerId': ownerId,
-                                                        'status': 'pending',
-                                                        'timestamp': FieldValue.serverTimestamp()
-                                                      });
-                                                      ScaffoldMessenger.of(context).showSnackBar(
-                                                          const SnackBar(content: Text('Order placed successfully')));
-                                                    },
-                                              child: const Text('Place Order',
-                                                  style: TextStyle(color: Colors.white, fontSize: 10)),
-                                            );
-                                          },
-                                        ),
+                                                            const SnackBar(content: Text('Order placed successfully')));
+                                                      },
+                                                child: const Text('Place Order',
+                                                    style: TextStyle(color: Colors.white, fontSize: 10)),
+                                              ),
+                                              const SizedBox(height: 6),
+                                            ],
+                                            if (hasRequest) ...[
+                                              // Status + call/message icons + received button
+                                              Column(
+                                                crossAxisAlignment: CrossAxisAlignment.end,
+                                                children: [
+                                                  Wrap(
+                                                    crossAxisAlignment: WrapCrossAlignment.center,
+                                                    spacing: 6,
+                                                    children: [
+                                                      Text(
+                                                        () {
+                                                          String label;
+                                                          Color color;
+                                                          switch (status) {
+                                                            case 'accepted':
+                                                              label = '🟢 Accepted';
+                                                              color = Colors.green;
+                                                              break;
+                                                            case 'completed':
+                                                              label = '✅ Completed';
+                                                              color = Colors.green;
+                                                              break;
+                                                            case 'rejected':
+                                                              label = '🔴 Rejected';
+                                                              color = Colors.red;
+                                                              break;
+                                                            default:
+                                                              label = '🟡 Pending';
+                                                              color = Colors.orange;
+                                                          }
+                                                          return label;
+                                                        }(),
+                                                        style: TextStyle(
+                                                          color: () {
+                                                            switch (status) {
+                                                              case 'accepted':
+                                                              case 'completed':
+                                                                return Colors.green;
+                                                              case 'rejected':
+                                                                return Colors.red;
+                                                              default:
+                                                                return Colors.orange;
+                                                            }
+                                                          }(),
+                                                          fontSize: 10,
+                                                          fontWeight: FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                      if (status == 'accepted')
+                                                        FutureBuilder<DocumentSnapshot?>(
+                                                          future: FirebaseFirestore.instance.collection('users').doc(ownerIdStr).get(),
+                                                          builder: (context, ownerSnap) {
+                                                            if (!ownerSnap.hasData || !ownerSnap.data!.exists)
+                                                              return const SizedBox.shrink();
+                                                            final ownerData = ownerSnap.data!.data() as Map<String, dynamic>?;
 
-                                        const SizedBox(height: 6),
+                                                            final ownerPhone = (ownerData?['phone'] ?? '').toString();
+                                                            final ownerName = (ownerData?['name'] ?? 'Seller').toString();
 
-                                        // Show status + call/message icons
-                                        StreamBuilder<QuerySnapshot>(
-                                          stream: FirebaseFirestore.instance
-                                              .collection('requests')
-                                              .where('requesterId', isEqualTo: userId)
-                                              .where('itemId', isEqualTo: cartItem['itemId'] ?? '')
-                                              .snapshots(),
-                                          builder: (context, rs) {
-                                            if (!rs.hasData || rs.data!.docs.isEmpty) return const SizedBox.shrink();
-                                            final r = rs.data!.docs.first;
-                                            final st = (r['status'] ?? 'pending').toString();
-                                            String label;
-                                            Color color;
-                                            switch (st) {
-                                              case 'accepted':
-                                                label = '🟢 Accepted';
-                                                color = Colors.green;
-                                                break;
-                                              case 'rejected':
-                                                label = '🔴 Rejected';
-                                                color = Colors.red;
-                                                break;
-                                              default:
-                                                label = '🟡 Pending';
-                                                color = Colors.orange;
-                                            }
-
-                                            return Wrap(
-                                              crossAxisAlignment: WrapCrossAlignment.center,
-                                              spacing: 6,
-                                              children: [
-                                                Text(label,
-                                                    style: TextStyle(
-                                                        color: color,
-                                                        fontSize: 10,
-                                                        fontWeight: FontWeight.w600)),
-                                                if (st == 'accepted')
-                                                  FutureBuilder<DocumentSnapshot?>(
-                                                    future: FirebaseFirestore.instance.collection('users').doc(ownerId).get(),
-                                                    builder: (context, ownerSnap) {
-                                                      if (!ownerSnap.hasData || !ownerSnap.data!.exists)
-                                                        return const SizedBox.shrink();
-                                                      final ownerData = ownerSnap.data!.data() as Map<String, dynamic>?;
-
-                                                      final ownerPhone = (ownerData?['phone'] ?? '').toString();
-                                                      final ownerName = (ownerData?['name'] ?? 'Seller').toString();
-
-                                                      return Row(
-                                                        mainAxisSize: MainAxisSize.min,
-                                                        children: [
-                                                          IconButton(
-                                                            icon: const Icon(Icons.call, color: Colors.green, size: 14),
-                                                            padding: EdgeInsets.zero,
-                                                            constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-                                                            onPressed: ownerPhone.isNotEmpty
-                                                                ? () async {
-                                                                    final uri = Uri(scheme: 'tel', path: ownerPhone);
-                                                                    if (await canLaunchUrl(uri)) await launchUrl(uri);
-                                                                  }
-                                                                : null,
-                                                          ),
-                                                          IconButton(
-                                                            icon: const Icon(Icons.message, color: Color(0xFFE07A5F), size: 14),
-                                                            padding: EdgeInsets.zero,
-                                                            constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-                                                            onPressed: () {
-                                                              Navigator.push(
-                                                                  context,
-                                                                  MaterialPageRoute(
-                                                                      builder: (_) => ChatScreen(
-                                                                          otherUserId: ownerId,
-                                                                          otherUserName: ownerName,
-                                                                          itemId: cartItem['itemId'] ?? '')));
-                                                            },
-                                                          ),
-                                                        ],
-                                                      );
-                                                    },
+                                                            return Row(
+                                                              mainAxisSize: MainAxisSize.min,
+                                                              children: [
+                                                                IconButton(
+                                                                  icon: const Icon(Icons.call, color: Colors.green, size: 14),
+                                                                  padding: EdgeInsets.zero,
+                                                                  constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                                                                  onPressed: ownerPhone.isNotEmpty
+                                                                      ? () async {
+                                                                          final uri = Uri(scheme: 'tel', path: ownerPhone);
+                                                                          if (await canLaunchUrl(uri)) await launchUrl(uri);
+                                                                        }
+                                                                      : null,
+                                                                ),
+                                                                IconButton(
+                                                                  icon: const Icon(Icons.message, color: Color(0xFFE07A5F), size: 14),
+                                                                  padding: EdgeInsets.zero,
+                                                                  constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                                                                  onPressed: () {
+                                                                    Navigator.push(
+                                                                        context,
+                                                                        MaterialPageRoute(
+                                                                            builder: (_) => ChatScreen(
+                                                                                otherUserId: ownerIdStr,
+                                                                                otherUserName: ownerName,
+                                                                                itemId: itemId)));
+                                                                  },
+                                                                ),
+                                                              ],
+                                                            );
+                                                          },
+                                                        ),
+                                                    ],
                                                   ),
-                                              ],
-                                            );
-                                          },
+                                                  if (status == 'accepted')
+                                                    Padding(
+                                                      padding: const EdgeInsets.only(top: 4),
+                                                      child: ElevatedButton(
+                                                        style: ElevatedButton.styleFrom(
+                                                          backgroundColor: AppTheme.terracotta,
+                                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                          minimumSize: const Size(0, 0),
+                                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                        ),
+                                                        onPressed: () async {
+                                                          if (!hasRequest) return;
+                                                          final requestDoc = reqSnap.data!.docs.first;
+                                                          try {
+                                                            await FirebaseFirestore.instance
+                                                                .collection('requests')
+                                                                .doc(requestDoc.id)
+                                                                .update({
+                                                              'status': 'completed',
+                                                              'completedTimestamp': FieldValue.serverTimestamp(),
+                                                            });
+                                                            await FirebaseFirestore.instance
+                                                                .collection('cart')
+                                                                .doc(cartItem.id)
+                                                                .delete();
+                                                            if (mounted) {
+                                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                                const SnackBar(
+                                                                  content: Text('Transaction completed! Item removed from cart.'),
+                                                                  backgroundColor: AppTheme.terracotta,
+                                                                ),
+                                                              );
+                                                            }
+                                                          } catch (e) {
+                                                            if (mounted) {
+                                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                                SnackBar(content: Text('Failed to mark as received: $e')),
+                                                              );
+                                                            }
+                                                          }
+                                                        },
+                                                        child: const Text(
+                                                          'Mark as Received',
+                                                          style: TextStyle(color: Colors.white, fontSize: 10),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            ],
+                                          ],
                                         ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
-                            ),
-                          ),
+                            );
+                          },
                         );
                       },
                     ),
